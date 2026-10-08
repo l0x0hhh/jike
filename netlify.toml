@@ -10,7 +10,16 @@
   # base / publish / command / environment / processing，写在 [build] 里会被忽略，
   # 结果是静默使用平台默认的 Node 版本。
   NODE_VERSION = "22"
-  NODE_ENV = "production"
+
+  # ⚠️ 这里绝对不能设 NODE_ENV = "production"。
+  # 一旦设了，Netlify 安装依赖时的 npm ci 会跳过 devDependencies，
+  # 而 tailwindcss / autoprefixer / postcss / typescript 全都在 devDependencies 里，
+  # 于是 postcss.config.js 找不到 tailwindcss，构建直接失败：
+  #   Error: Cannot find module 'tailwindcss'
+  # next build 自己会把 NODE_ENV 设为 production，此处无需也不该干预。
+  # 下面这行是双保险：万一平台侧仍注入 NODE_ENV=production，也强制装上 devDeps。
+  NPM_FLAGS = "--include=dev"
+
   # 关闭 Next.js 遥测，避免构建日志噪音
   NEXT_TELEMETRY_DISABLED = "1"
 
