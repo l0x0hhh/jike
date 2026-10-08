@@ -1,0 +1,37 @@
+# Netlify 构建与部署配置
+# 平台：Netlify（Next.js 官方支持的运行时）
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # NODE_VERSION 必须放在 [build.environment] 下：Netlify 的 [build] 只识别
+  # base / publish / command / environment / processing，写在 [build] 里会被忽略，
+  # 结果是静默使用平台默认的 Node 版本。
+  NODE_VERSION = "22"
+  NODE_ENV = "production"
+  # 关闭 Next.js 遥测，避免构建日志噪音
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# 静态资源与页面 CDN 缓存策略
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # 允许 Supabase 端点在浏览器直连写入
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# 刻意不配置 SPA 兜底 [[redirects]]：
+# 全站只有一个页面（评价详情是弹窗、不是路由，代码里没有任何 next/link 或
+# useRouter 跳转），不存在需要兜底的客户端路由；而 `/* -> /index.html (200)`
+# 唯一的实际效果是把不存在的路径伪装成首页、掩盖真实 404，并可能与 Netlify
+# Next.js Runtime 生成的路由规则产生优先级歧义。
+# 只有 output: 'export' 纯静态导出模式才需要这种兜底。

@@ -1,0 +1,32 @@
+{
+  "name": "chunhuiyuan-dish-review",
+  "version": "1.0.0",
+  "private": true,
+  "description": "春晖园商家菜品评价面板",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "seed:parse": "node .tools/parse.js",
+    "seed:db": "node .tools/seed.mjs",
+    "check:data": "node .tools/parse.js",
+    "audit:deps": "npm audit --omit=dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.58.0",
+    "motion": "^14.0.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.9",
+    "@types/react-dom": "19.1.7",
+    "autoprefixer": "10.4.21",
+    "postcss": "8.5.3",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.8.3"
+  }
+}

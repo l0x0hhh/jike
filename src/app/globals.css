@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* 移动端安全区 */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  body {
+    @apply bg-paper text-ink-900 antialiased;
+    /* 拉丁与数字走自托管的 Archivo（性格来源），中文回落到系统字（字重与字距承层级） */
+    font-family: var(--font-archivo), -apple-system, BlinkMacSystemFont, 'PingFang SC',
+      'HarmonyOS Sans SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    font-size: 15px;
+    /* 8px 基线间距系统 */
+    line-height: 1.5;
+  }
+
+  /* 中文标题的性格来自字重 + 字距（中文没有等宽变体的传统，字距是唯一可靠的「性格」来源） */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.012em;
+    text-wrap: pretty;
+  }
+
+  /* 无障碍：尊重系统的减弱动效设置。
+     除了把时长压到 0.01ms，还必须把 animation-delay 归零 ——
+     否则带错峰延迟的入场在「延迟期间」仍会停在不可见的 from 帧（fill-mode: backwards）。 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* 卡片：2px 实底描边 + 直角，取代柔和投影（本方向的形状签名） */
+  .card {
+    @apply border-2 border-ink-900 bg-paper;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 font-bold transition-all duration-200;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn:focus-visible {
+    @apply outline-none ring-2 ring-accent-600 ring-offset-2 ring-offset-paper;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-600 px-5 py-2.5 text-white;
+  }
+  .btn-primary:hover {
+    @apply bg-ink-900;
+  }
+
+  .btn-ghost {
+    @apply btn border-2 border-ink-900 bg-paper px-3.5 py-2 text-ink-900;
+  }
+  .btn-ghost:hover {
+    @apply bg-ink-900 text-paper;
+  }
+
+  /* 筛选 chip：粗边直角，选中即反白 —— 不靠圆角和底色区分状态 */
+  .chip {
+    @apply cursor-pointer select-none border-2 border-ink-900 bg-paper px-3 py-2
+           text-xs font-bold transition-all duration-200;
+  }
+  .chip:hover {
+    @apply bg-ink-900 text-paper;
+  }
+  .chip:focus-visible {
+    @apply outline-none ring-2 ring-accent-600 ring-offset-1 ring-offset-paper;
+  }
+  .chip[data-active='true'] {
+    @apply border-accent-600 bg-accent-600 text-white;
+  }
+  .chip[data-active='true']:hover {
+    @apply border-accent-700 bg-accent-700 text-white;
+  }
+
+  /* 数字量表（替代星星）：1–5 连排方格，点击即选 */
+  .scale-btn {
+    @apply cursor-pointer border-2 border-ink-900 bg-paper font-bold text-ink-900
+           transition-all duration-150;
+  }
+  .scale-btn + .scale-btn {
+    border-left-width: 0;
+  }
+  .scale-btn:hover {
+    @apply bg-ink-900 text-paper;
+  }
+  .scale-btn:focus-visible {
+    @apply outline-none ring-2 ring-accent-600 ring-offset-1 ring-offset-paper;
+  }
+  .scale-btn[aria-pressed='true'] {
+    @apply border-accent-600 bg-accent-600 text-white;
+  }
+  .scale-btn[aria-pressed='true']:hover {
+    @apply border-accent-700 bg-accent-700 text-white;
+  }
+  /* 选中格右侧相邻格补回左边线，避免出现断口 */
+  .scale-btn[aria-pressed='true'] + .scale-btn {
+    border-left-width: 2px;
+    border-left-color: #14110e;
+  }
+
+  /* 骨架屏 */
+  .skeleton {
+    @apply relative overflow-hidden bg-ink-200;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}

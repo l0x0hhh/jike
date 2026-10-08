@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>春晖园菜品评价 · 方向 A 暗房策展</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     方向 A · 秒数轮盘 #18「深色画廊裱框 Gallery Dark」
+     逻辑：暗房把 UI 退到背景，让菜名成为唯一主角。
+     论证：食堂菜名是最朴素的内容，配得上被当成展品陈列。
+     ============================================================ */
+  :root{
+    --bg:#0C0B0A;          /* 暖黑，不是纯黑——带一点纸感的棕 */
+    --ink:#E9E5DF;         /* 暖白 */
+    --dim:#7A756E;         /* 注脚灰 */
+    --faint:rgba(233,229,223,.10);
+    --ochre:#B98A5E;       /* 唯一彩色：原表评价的赭石题注 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:14px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px}
+
+  /* ---- 顶栏：极细分隔，无背景无阴影 ---- */
+  header{padding:28px 0 18px;border-bottom:1px solid var(--faint)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:24px}
+  .brand{font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:400;letter-spacing:.02em}
+  .meta{font-size:12px;color:var(--dim);letter-spacing:.06em}
+  .meta b{color:var(--ink);font-weight:400}
+
+  /* ---- 搜索：只有下划线，没有输入框 ---- */
+  .tools{display:flex;align-items:baseline;gap:28px;margin-top:18px}
+  .search{flex:1;border-bottom:1px solid var(--faint);padding-bottom:6px}
+  .search input{
+    background:none;border:0;outline:none;color:var(--ink);
+    font-family:inherit;font-size:13px;width:100%;letter-spacing:.04em
+  }
+  .search input::placeholder{color:var(--dim)}
+  .sortbtn{background:none;border:0;color:var(--dim);font-family:inherit;font-size:12px;
+    letter-spacing:.08em;cursor:pointer;padding:0 0 6px;}
+  .sortbtn:hover{color:var(--ink)}
+
+  /* ---- 商家索引：一行小字横排，选中项加亮 ---- */
+  nav{padding:16px 0;border-bottom:1px solid var(--faint);
+      display:flex;gap:22px;overflow-x:auto;white-space:nowrap}
+  nav::-webkit-scrollbar{display:none}
+  nav button{
+    background:none;border:0;color:var(--dim);font-family:inherit;
+    font-size:12px;letter-spacing:.06em;cursor:pointer;padding:0;position:relative
+  }
+  nav button:hover{color:var(--ink)}
+  nav button[aria-current="true"]{color:var(--ink)}
+  nav button[aria-current="true"]::after{
+    content:"";position:absolute;left:0;right:0;bottom:-5px;height:1px;background:var(--ink)
+  }
+
+  /* ---- 展品区：单列居中、巨幅留白 ---- */
+  main{padding:56px 0 120px}
+  .room{max-width:760px;margin:0 auto}
+
+  .piece{padding:0 0 64px}
+  .piece + .piece{border-top:1px solid var(--faint);padding-top:56px}
+
+  .idx{font-size:12px;color:var(--dim);letter-spacing:.14em;margin-bottom:18px}
+
+  .title{
+    font-family:'Fraunces',Georgia,serif;
+    font-size:52px;font-weight:300;line-height:1.08;
+    letter-spacing:-.015em;color:var(--ink);
+    display:inline-block;cursor:pointer;position:relative;
+    transition:color .25s ease;
+  }
+  .title:hover{color:#fff}
+  /* hover 时浮出的动作，平时完全不可见 */
+  .act{
+    font-size:12px;color:var(--dim);letter-spacing:.08em;
+    opacity:0;transform:translateX(-6px);transition:all .25s ease;
+    margin-left:14px;white-space:nowrap
+  }
+  .piece:hover .act{opacity:1;transform:translateX(0)}
+
+  /* EXIF 式注脚 */
+  .exif{margin-top:14px;font-size:12px;color:var(--dim);letter-spacing:.05em}
+  .exif .sep{opacity:.4;margin:0 8px}
+
+  /* 原表评价：当作题注，斜体赭石 */
+  .caption{
+    margin-top:16px;padding-left:14px;border-left:1px solid var(--ochre);
+    font-family:'Fraunces',Georgia,serif;font-style:italic;
+    font-size:15px;color:var(--ochre);line-height:1.6;max-width:52ch
+  }
+  .caption span{font-family:'IBM Plex Mono',monospace;font-style:normal;
+    font-size:11px;letter-spacing:.1em;color:var(--dim);display:block;margin-bottom:2px}
+
+  /* ---- 填写面板：同一套语言，无卡片无圆角 ---- */
+  .compose{margin-top:44px;border-top:1px solid var(--faint);padding-top:32px}
+  .compose h3{font-family:'Fraunces',Georgia,serif;font-weight:400;
+    font-size:18px;margin-bottom:6px}
+  .compose .hint{font-size:12px;color:var(--dim);margin-bottom:24px}
+  .field{margin-bottom:22px}
+  .field > label{display:block;font-size:11px;letter-spacing:.12em;
+    color:var(--dim);margin-bottom:8px}
+  .field input[type=text]{
+    width:100%;background:none;border:0;border-bottom:1px solid var(--faint);
+    color:var(--ink);font-family:inherit;font-size:14px;padding:6px 0;outline:none
+  }
+  .field input[type=text]:focus{border-color:var(--ink)}
+  /* 评分：1-10 数字，不用星星 */
+  .scale{display:flex;gap:6px;flex-wrap:wrap}
+  .scale button{
+    background:none;border:1px solid var(--faint);color:var(--dim);
+    font-family:inherit;font-size:12px;padding:6px 10px;cursor:pointer;
+    transition:all .2s ease
+  }
+  .scale button:hover{border-color:var(--ink);color:var(--ink)}
+  .scale button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .tags{display:flex;gap:14px;flex-wrap:wrap}
+  .tags button{background:none;border:0;color:var(--dim);font-family:inherit;
+    font-size:12px;cursor:pointer;padding:0;letter-spacing:.05em}
+  .tags button:hover{color:var(--ink)}
+  .tags button[aria-pressed="true"]{color:var(--ochre)}
+  .tags button[aria-pressed="true"]::before{content:"/ "}
+  .submit{
+    margin-top:8px;background:none;border:1px solid var(--ink);color:var(--ink);
+    font-family:inherit;font-size:12px;letter-spacing:.14em;padding:12px 34px;
+    cursor:pointer;transition:all .25s ease
+  }
+  .submit:hover{background:var(--ink);color:var(--bg)}
+
+  footer{border-top:1px solid var(--faint);padding:28px 0 40px;
+    font-size:11px;color:var(--dim);letter-spacing:.06em;line-height:1.9}
+
+  @media(max-width:680px){
+    .wrap{padding:0 20px}
+    .title{font-size:34px}
+    main{padding:36px 0 80px}
+    .piece{padding-bottom:44px}
+    .piece + .piece{padding-top:40px}
+    .top{flex-direction:column;gap:8px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <div class="brand">春晖园菜品评价</div>
+      <div class="meta"><b>16</b> 家商家<span style="opacity:.4;margin:0 8px">/</span><b>371</b> 道菜<span style="opacity:.4;margin:0 8px">/</span><b>20</b> 条评价</div>
+    </div>
+    <div class="tools">
+      <div class="search"><input type="text" placeholder="搜菜名 —— 按 / 聚焦"></div>
+      <button class="sortbtn">排序 ▾</button>
+    </div>
+  </header>
+
+  <nav aria-label="商家筛选">
+    <button aria-current="true">全部 371</button>
+    <button>久岛烧肉 15</button>
+    <button>泰好食栈 31</button>
+    <button>第九味 32</button>
+    <button>潮汕汤粉 32</button>
+    <button>麻辣香锅 3</button>
+    <button>罐罐米线 10</button>
+    <button>果欧手作 14</button>
+    <button>西北印象 22</button>
+    <button>广式烧腊 20</button>
+  </nav>
+
+  <main>
+    <div class="room">
+
+      <div class="piece">
+        <div class="idx">01 —— 久岛烧肉</div>
+        <span class="title">牛丼烧</span><span class="act">写评价 →</span>
+        <div class="exif">¥19.90<span class="sep">·</span>尚未评分</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">02 —— 泰好食栈</div>
+        <span class="title">手工咖喱面包鸡</span><span class="act">写评价 →</span>
+        <div class="exif">¥25.50<span class="sep">·</span>尚未评分</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">03 —— 罐罐米线</div>
+        <span class="title">雪菜肉沫罐罐米线</span><span class="act">写评价 →</span>
+        <div class="exif">¥13.80<span class="sep">·</span>已有 1 条评价</div>
+        <div class="caption"><span>原表</span>夯爆了</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">04 —— 罐罐米线</div>
+        <span class="title">云南小锅罐罐米线</span><span class="act">写评价 →</span>
+        <div class="exif">¥14.80<span class="sep">·</span>已有 1 条评价</div>
+        <div class="caption"><span>原表</span>超级夯</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">05 —— 第九味</div>
+        <span class="title">鸡汤鲜煮鲜肉小馄饨</span><span class="act">写评价 →</span>
+        <div class="exif">¥11.00<span class="sep">·</span>尚未评分</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">06 —— 潮汕汤粉</div>
+        <span class="title">瘦肉汤粉</span><span class="act">写评价 →</span>
+        <div class="exif">¥12.00<span class="sep">·</span>尚未评分</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">07 —— 麻辣香锅</div>
+        <span class="title">麻辣香锅</span><span class="act">写评价 →</span>
+        <div class="exif">¥25.80 / 500g<span class="sep">·</span>尚未评分</div>
+      </div>
+
+      <div class="piece">
+        <div class="idx">08 —— 小卡轻食</div>
+        <span class="title">自选称重</span><span class="act">写评价 →</span>
+        <div class="exif">¥19.80 / 500g<span class="sep">·</span>已有 1 条评价</div>
+        <div class="caption"><span>原表</span>性价比没点套餐高，肉的话不像鲜肉，应该有点偏预制或加工后的肉，总体来说还行</div>
+      </div>
+
+      <!-- 填写区：与陈列同一套语言 -->
+      <div class="compose">
+        <h3>为「牛丼烧」写一条</h3>
+        <p class="hint">免登录，填个昵称即可。提交后不可修改。</p>
+
+        <div class="field">
+          <label for="nick">昵称</label>
+          <input id="nick" type="text" placeholder="如：小虾">
+        </div>
+
+        <div class="field">
+          <label>总体评分</label>
+          <div class="scale">
+            <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button>
+            <button aria-pressed="true">6</button><button>7</button><button>8</button><button>9</button><button>10</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>标签</label>
+          <div class="tags">
+            <button aria-pressed="true">分量足</button>
+            <button>偏咸</button>
+            <button>很香</button>
+            <button>会回购</button>
+            <button>性价比高</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="body">细说</label>
+          <input id="body" type="text" placeholder="肉给得足，酱汁偏咸一点……">
+        </div>
+
+        <button class="submit">提交</button>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    数据来自春晖园菜品评价表 · 评价免登录提交后不可修改<br>
+    价格或菜名有误请反馈至原表更正
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="春晖园菜品评价">
+  <!-- 方形蓝底（直角，与全站形状语言一致）+ 白色碗的剪影 -->
+  <rect width="32" height="32" fill="#1B44E8"/>
+  <!-- 碗身：梯形，硬边 -->
+  <path d="M6 16h20l-2.6 9.2a2 2 0 0 1-1.9 1.3H10.5a2 2 0 0 1-1.9-1.3L6 16Z" fill="#FBF7F0"/>
+  <!-- 碗沿 -->
+  <rect x="4.6" y="14" width="22.8" height="2.6" fill="#FBF7F0"/>
+  <!-- 热气：三条等宽直线 -->
+  <g stroke="#FBF7F0" stroke-width="2" stroke-linecap="square">
+    <path d="M11.6 11.4V6.2"/>
+    <path d="M16 12.4V5"/>
+    <path d="M20.4 11.4V6.2"/>
+  </g>
+</svg>

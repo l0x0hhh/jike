@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>春晖园菜品评价 · 方向 C 导视信息设计</title>
+<style>
+  /* ============================================================
+     方向 C · 最佳设计师 Massimo Vignelli · 导视信息设计
+     逻辑：食堂本质是「导视 + 价目」场景，用 Vignelli 的信息设计哲学
+           做——Helvetica、严格栅格、1px 规则线、可用性即美。
+     论证：价格右对齐排成一竖列，是最朴素也最有效的决策辅助；
+           零装饰不是空洞，是把注意力全部留给信息。
+     ============================================================ */
+  :root{
+    --paper:#FFFFFF;
+    --ink:#111111;
+    --rule:#C9C9C9;
+    --muted:#5E5E5E;
+    --signal:#D80027;      /* 唯一强调色：信号红，只给「可行动」的元素 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--paper);color:var(--ink);
+    font-family:Helvetica,'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;
+    font-size:15px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 26px}
+
+  /* ---- 顶栏：粗色带 = 导视牌的第一眼 ---- */
+  .band{height:10px;background:var(--ink)}
+  header{padding:24px 0 0}
+  .ident{display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .ident .name{font-size:26px;font-weight:700;letter-spacing:-.01em}
+  .ident .name span{color:var(--signal)}
+  .ident .figs{font-size:12px;letter-spacing:.09em;color:var(--muted);
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ident .figs b{color:var(--ink);font-weight:700}
+
+  /* ---- 工具条 ---- */
+  .tools{display:flex;align-items:stretch;margin-top:20px;border-top:1px solid var(--ink)}
+  .tools .grow{flex:1;min-width:200px}
+  .tools input{
+    width:100%;border:0;outline:none;background:none;padding:13px 0;
+    font-family:inherit;font-size:14px;color:var(--ink)
+  }
+  .tools input::placeholder{color:var(--muted)}
+  .tools button{
+    border:0;border-left:1px solid var(--rule);background:none;
+    font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.09em;
+    padding:0 18px;cursor:pointer;color:var(--ink)
+  }
+  .tools button:hover{background:var(--ink);color:#fff}
+
+  /* ---- 商家索引：导视式横排，选中项加信号红竖条 ---- */
+  .index{display:flex;overflow-x:auto;border-bottom:1px solid var(--ink);padding:0}
+  .index::-webkit-scrollbar{display:none}
+  .index button{
+    border:0;background:none;font-family:inherit;cursor:pointer;
+    font-size:12px;font-weight:700;letter-spacing:.08em;
+    padding:13px 15px 11px;color:var(--muted);white-space:nowrap;
+    border-bottom:4px solid transparent;margin-bottom:-1px;
+    font-variant-numeric:tabular-nums
+  }
+  .index button:hover{color:var(--ink)}
+  .index button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--signal)}
+
+  /* ---- 信息表：严格四栏 ---- */
+  main{padding:26px 0 80px}
+  .caption-row{
+    display:grid;grid-template-columns:minmax(96px,132px) 1fr 132px 132px;
+    gap:0 18px;padding-bottom:8px;border-bottom:1px solid var(--ink);
+    font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--muted);
+    text-transform:uppercase
+  }
+  .row{
+    display:grid;grid-template-columns:minmax(96px,132px) 1fr 132px 132px;
+    gap:0 18px;padding:15px 0;border-bottom:1px solid var(--rule);
+    align-items:baseline;transition:background .12s ease
+  }
+  .row:hover{background:#F4F4F4}
+  .shop{font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--muted)}
+  .dish{font-size:17px;font-weight:500;letter-spacing:-.005em}
+  .price{
+    text-align:right;font-size:16px;font-weight:700;
+    font-variant-numeric:tabular-nums;letter-spacing:-.01em
+  }
+  .price small{font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--muted)}
+  .state{
+    text-align:right;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);
+    font-variant-numeric:tabular-nums
+  }
+  .state.got{color:var(--signal)}
+  /* 原表评价：缩进到菜名栏下方，不占额外栏 */
+  .note{
+    grid-column:2 / 3;font-size:12.5px;color:var(--muted);line-height:1.5;
+    margin-top:7px;padding-left:10px;border-left:2px solid var(--signal);
+    max-width:56ch
+  }
+
+  /* ---- 填写区：标签左栏 / 输入右栏，纯结构 ---- */
+  .form{margin-top:44px;border-top:1px solid var(--ink);padding-top:22px}
+  .form .head{display:flex;align-items:baseline;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .form h2{font-size:19px;font-weight:700;letter-spacing:-.005em}
+  .form .lede{font-size:12px;color:var(--muted);letter-spacing:.03em}
+  .frow{
+    display:grid;grid-template-columns:minmax(96px,132px) 1fr;gap:0 18px;
+    padding:13px 0;border-bottom:1px solid var(--rule);align-items:center
+  }
+  .frow > .lab{font-size:10px;font-weight:700;letter-spacing:.16em;
+    color:var(--muted);text-transform:uppercase}
+  .frow input[type=text]{
+    width:100%;border:0;outline:none;background:none;
+    border-bottom:1px solid var(--rule);padding:5px 0;
+    font-family:inherit;font-size:14px;color:var(--ink)
+  }
+  .frow input[type=text]:focus{border-bottom-color:var(--signal)}
+  .scale{display:flex;gap:0;flex-wrap:wrap}
+  .scale button{
+    border:1px solid var(--rule);border-left:0;background:none;
+    font-family:inherit;font-size:13px;font-weight:700;
+    padding:7px 0;width:40px;cursor:pointer;color:var(--ink);
+    font-variant-numeric:tabular-nums;transition:all .12s ease
+  }
+  .scale button:first-child{border-left:1px solid var(--rule)}
+  .scale button:hover{background:var(--ink);color:#fff}
+  .scale button[aria-pressed="true"]{background:var(--signal);border-color:var(--signal);color:#fff}
+  .chips{display:flex;gap:0;flex-wrap:wrap}
+  .chips button{
+    border:1px solid var(--rule);border-left:0;background:none;
+    font-family:inherit;font-size:12px;font-weight:600;
+    padding:6px 13px;cursor:pointer;color:var(--ink);transition:all .12s ease
+  }
+  .chips button:first-child{border-left:1px solid var(--rule)}
+  .chips button:hover{background:var(--ink);color:#fff}
+  .chips button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  .actions{margin-top:22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .submit{
+    border:0;background:var(--signal);color:#fff;font-family:inherit;
+    font-size:13px;font-weight:700;letter-spacing:.1em;
+    padding:15px 46px;cursor:pointer;transition:opacity .15s ease
+  }
+  .submit:hover{opacity:.82}
+  .actions .warn{font-size:12px;color:var(--muted)}
+
+  footer{border-top:1px solid var(--ink);padding:20px 0 40px;
+    font-size:11px;letter-spacing:.05em;color:var(--muted);line-height:1.9}
+
+  @media(max-width:720px){
+    .wrap{padding:0 16px}
+    .caption-row,.row{grid-template-columns:1fr 96px}
+    .caption-row .shop,.row .shop{display:none}
+    .caption-row .state,.row .state{display:none}
+    .note{grid-column:1 / -1;padding-left:0;border-left:0;border-top:1px solid var(--rule);padding-top:7px}
+    .frow{grid-template-columns:1fr;gap:9px 0;align-items:start}
+    .dish{font-size:15px}
+  }
+</style>
+</head>
+<body>
+<div class="band"></div>
+<div class="wrap">
+
+  <header>
+    <div class="ident">
+      <div class="name">春晖园<span>·</span>菜品评价</div>
+      <div class="figs"><b>371</b> 道菜　<b>16</b> 家商家　<b>20</b> 条评价</div>
+    </div>
+
+    <div class="tools">
+      <div class="grow"><input type="text" placeholder="搜菜名　按 / 聚焦"></div>
+      <button>评分最高</button>
+      <button>评价最多</button>
+      <button>价格从低到高</button>
+    </div>
+
+    <div class="index" role="group" aria-label="商家筛选">
+      <button aria-pressed="true">全部 371</button>
+      <button>久岛烧肉 15</button>
+      <button>泰好食栈 31</button>
+      <button>第九味 32</button>
+      <button>潮汕汤粉 32</button>
+      <button>麻辣香锅 3</button>
+      <button>罐罐米线 10</button>
+      <button>果欧手作 14</button>
+      <button>西北印象 22</button>
+      <button>广式烧腊 20</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="caption-row" aria-hidden="true">
+      <div>商家</div>
+      <div>菜品</div>
+      <div style="text-align:right">价格</div>
+      <div style="text-align:right">评价</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">久岛烧肉</div>
+      <div class="dish">牛丼烧</div>
+      <div class="price">19.90</div>
+      <div class="state">—</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">泰好食栈</div>
+      <div class="dish">手工咖喱面包鸡</div>
+      <div class="price">25.50</div>
+      <div class="state">—</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">罐罐米线</div>
+      <div class="dish">雪菜肉沫罐罐米线</div>
+      <div class="price">13.80</div>
+      <div class="state got">1 条</div>
+      <div class="note">原表：夯爆了</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">罐罐米线</div>
+      <div class="dish">云南小锅罐罐米线</div>
+      <div class="price">14.80</div>
+      <div class="state got">1 条</div>
+      <div class="note">原表：超级夯</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">第九味</div>
+      <div class="dish">鸡汤鲜煮鲜肉小馄饨</div>
+      <div class="price">11.00</div>
+      <div class="state">—</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">潮汕汤粉</div>
+      <div class="dish">瘦肉汤粉</div>
+      <div class="price">12.00</div>
+      <div class="state">—</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">麻辣香锅</div>
+      <div class="dish">麻辣香锅</div>
+      <div class="price">25.80 <small>/500g</small></div>
+      <div class="state">—</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">小卡轻食</div>
+      <div class="dish">自选称重</div>
+      <div class="price">19.80 <small>/500g</small></div>
+      <div class="state got">1 条</div>
+      <div class="note">原表：性价比没点套餐高，肉的话不像鲜肉，应该有点偏预制或加工后的肉，总体来说还行</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">果欧手作</div>
+      <div class="dish">双皮奶</div>
+      <div class="price">7.00</div>
+      <div class="state">—</div>
+    </div>
+
+    <div class="row">
+      <div class="shop">早餐</div>
+      <div class="dish">馒头</div>
+      <div class="price">1.00</div>
+      <div class="state">—</div>
+    </div>
+
+    <!-- 填写区 -->
+    <div class="form">
+      <div class="head">
+        <h2>为「牛丼烧」写一条评价</h2>
+        <div class="lede">免登录 · 提交后不可修改</div>
+      </div>
+
+      <div class="frow">
+        <div class="lab">昵称</div>
+        <div><input type="text" placeholder="如：小虾"></div>
+      </div>
+
+      <div class="frow">
+        <div class="lab">总体评分</div>
+        <div class="scale">
+          <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button>
+          <button aria-pressed="true">6</button><button>7</button><button>8</button><button>9</button><button>10</button>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="lab">标签</div>
+        <div class="chips">
+          <button aria-pressed="true">分量足</button><button>偏咸</button>
+          <button>很香</button><button>会回购</button><button>性价比高</button>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="lab">细说</div>
+        <div><input type="text" placeholder="肉给得足，酱汁偏咸一点……"></div>
+      </div>
+
+      <div class="actions">
+        <button class="submit">提交评价</button>
+        <div class="warn">请勿修改或删除他人的评价</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    数据来自春晖园菜品评价表　·　价格与菜名如有误请反馈至原表更正
+  </footer>
+</div>
+</body>
+</html>

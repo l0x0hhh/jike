@@ -1,0 +1,33 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js 构建产物
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+# 本地自定义 distDir（见 next.config.ts）
+.build/
+.build-export/
+# 静态导出的可打开预览（由 .build-export 复制而来）
+preview/
+
+# 环境变量（绝不入库）
+.env
+.env.local
+.env.*.local
+
+# 工具目录（含 kdocs-cli.exe 与原始文档，不应提交）
+.tools/
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Netlify CLI 链接状态（含 site id，绝不入库）
+.netlify/
