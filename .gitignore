@@ -31,3 +31,6 @@ Thumbs.db
 
 # Netlify CLI 链接状态（含 site id，绝不入库）
 .netlify/
+
+# 本项目的构建/决策记录（agent 工作区，不入库）
+.workbuddy/
