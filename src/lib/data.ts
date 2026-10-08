@@ -232,7 +232,12 @@ export async function submitReview(draft: ReviewDraft): Promise<{ ok: boolean; e
   if (error) {
     // 区分业务错误与网络错误，给出可行动提示
     if (error.message.includes('violates row-level security')) {
-      return { ok: false, error: '写入被拒绝，请检查数据库 RLS 策略是否已开启' };
+      // 这句话的含义是「RLS 正在正常拦截」，不是「RLS 没开启」。
+      // 原文案「请检查数据库 RLS 策略是否已开启」会把人往完全相反的方向带。
+      return {
+        ok: false,
+        error: '写入被拒绝：昵称需 1–20 字、评价内容不超过 500 字、快捷标签最多 6 个',
+      };
     }
     return { ok: false, error: error.message };
   }

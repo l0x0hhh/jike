@@ -157,7 +157,11 @@ create policy p_reviews_insert on public.reviews for insert
   with check (
     char_length(nickname) between 1 and 20
     and char_length(content) <= 500
-    and array_length(tags, 1) <= 6
+    -- coalesce 不能省：Postgres 里 array_length('{}', 1) 返回 NULL 而不是 0。
+    -- 直接写 array_length(tags, 1) <= 6，会让"一个快捷标签都没勾"的评价被整行拒绝
+    -- （NULL <= 6 求值为 NULL，WITH CHECK 不成立），而报错只是笼统的
+    -- "new row violates row-level security policy"，完全指不到原因。
+    and coalesce(array_length(tags, 1), 0) <= 6
   );
 
 -- 评价：不允许任何人改别人的（no update policy = 默认拒绝）
