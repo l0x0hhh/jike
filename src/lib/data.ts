@@ -70,6 +70,20 @@ export function getSupabase() {
 
 export const isCloudEnabled = () => getSupabase() !== null;
 
+// ---------- 云端拉取健康度 ----------
+// 为什么需要它：下面两个拉取函数在失败时都静默返回空值，于是界面上的
+// 「网络不通」和「真的没人评价」长得一模一样——排查成本极高（线上就踩过：
+// 电脑能显示评价、手机显示为空，但页面上没有任何提示能区分原因）。
+// 这里记录失败状态，供 UI 显示一条可重试的提示。
+const cloudHealth = { statsFailed: false, reviewsFailed: false, lastMessage: '' };
+
+export function getCloudHealth() {
+  return {
+    degraded: cloudHealth.statsFailed || cloudHealth.reviewsFailed,
+    message: cloudHealth.lastMessage,
+  };
+}
+
 // ---------- 设备指纹（不可逆，仅用于限流去重） ----------
 
 export function clientHash(): string {
@@ -152,8 +166,11 @@ export async function fetchStats(): Promise<Map<number, DishStat>> {
     .limit(2000);
   if (error) {
     console.error('[stats] 拉取失败，回退本地缓存', error.message);
+    cloudHealth.statsFailed = true;
+    cloudHealth.lastMessage = error.message;
     return new Map();
   }
+  cloudHealth.statsFailed = false;
   return new Map((data ?? []).map((s) => [s.dish_id, s as DishStat]));
 }
 
@@ -169,8 +186,11 @@ export async function fetchReviews(limit = 100): Promise<Review[]> {
     .limit(limit);
   if (error) {
     console.error('[reviews] 拉取失败', error.message);
+    cloudHealth.reviewsFailed = true;
+    cloudHealth.lastMessage = error.message;
     return [];
   }
+  cloudHealth.reviewsFailed = false;
   return (data ?? []) as Review[];
 }
 

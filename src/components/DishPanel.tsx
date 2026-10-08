@@ -20,6 +20,7 @@ import {
   checkRateLimit,
   fetchReviews,
   fetchStats,
+  getCloudHealth,
   isCloudEnabled,
   merchants,
   meta,
@@ -73,6 +74,7 @@ export default function DishPanel() {
   const [toast, setToast] = useState('');
   const [showFeed, setShowFeed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [cloudDegraded, setCloudDegraded] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // 顶部导航：滚动过阈值后浮现细阴影（纯原生监听，避免 motion 进首屏）
@@ -92,6 +94,7 @@ export default function DishPanel() {
     const [s, r] = await Promise.all([fetchStats(), fetchReviews(60)]);
     setStats(s);
     setReviews(r);
+    setCloudDegraded(getCloudHealth().degraded);
     if (!opts?.silent) setLoading(false);
   }, []);
 
@@ -104,6 +107,28 @@ export default function DishPanel() {
     const handler = () => loadData({ silent: true });
     window.addEventListener('chy:review-added', handler);
     return () => window.removeEventListener('chy:review-added', handler);
+  }, [loadData]);
+
+  // 回到前台时静默校准。
+  // 为什么需要：页面只在挂载时拉一次数据，之后**永不刷新**。手机切后台/锁屏，
+  // 再打开时看到的仍是打开那一刻的快照——这正是「电脑上刚写的评价、手机上
+  // 一直没有」的成因（不是网络问题：那台手机明明写入成功过）。
+  // 5s 节流，避免 visibilitychange 与 focus 双触发时重复打两次请求。
+  useEffect(() => {
+    let last = 0;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - last < 5000) return;
+      last = now;
+      loadData({ silent: true });
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
   }, [loadData]);
 
   // 快捷键：/ 聚焦搜索
@@ -316,12 +341,37 @@ export default function DishPanel() {
         </div>
       </header>
 
+      {/* 云端拉取失败提示：没有它的话，「网络不通」和「真的没人评价」在界面上无法区分 */}
+      {cloudDegraded && (
+        <div
+          role="status"
+          aria-live="polite"
+          title={getCloudHealth().message || undefined}
+          className="border-b-2 border-warn-500 bg-warn-50"
+        >
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
+            <span className="shrink-0 text-[13px] font-bold text-warn-700">云端连接失败</span>
+            <span className="min-w-0 flex-1 text-[12px] font-medium text-ink-700">
+              下面的评价数和评价流可能不完整。检查网络后重试。
+            </span>
+            <Pressable
+              type="button"
+              onClick={() => loadData()}
+              hoverScale={1}
+              className="shrink-0 border-2 border-warn-700 bg-paper px-2.5 py-1 text-[12px] font-bold text-warn-700 transition-colors duration-200 hover:bg-warn-700 hover:text-paper"
+            >
+              重试
+            </Pressable>
+          </div>
+        </div>
+      )}
+
       <main id="main" className="mx-auto max-w-6xl px-4 py-5">
         {/* ===== 概览统计 ===== */}
         <OverviewSection loading={loading} overview={overview} totalDishes={allDishes.length} />
 
         {/* 冷启动引导：整体没数据时给一个明确行动 */}
-        {!loading && overview.totalReviews === 0 && (
+        {!loading && !cloudDegraded && overview.totalReviews === 0 && (
           <FadeIn className="mb-5 flex flex-col items-start gap-3 border-2 border-accent-600 bg-accent-50 p-4 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
               <p className="font-bold text-ink-900">还没有人评价过</p>
