@@ -24,14 +24,15 @@ interface DishWallProps {
   grouped: DishGroup[] | null;
   stats: Map<number, DishStat>;
   query: string;
-  onWrite: (dish: Dish) => void;
+  // 卡片点击进入详情，详情内再提供写评价入口。
+  onOpen: (dish: Dish) => void;
   onClearFilters: () => void;
 }
 
 /** 布局重排动画的可见数量上限：超过则瞬间切换，避免大量布局投影计算 */
 export const LAYOUT_ANIMATION_LIMIT = 60;
 
-export function DishWall({ visible, grouped, stats, query, onWrite, onClearFilters }: DishWallProps) {
+export function DishWall({ visible, grouped, stats, query, onOpen, onClearFilters }: DishWallProps) {
   const layoutEnabled = visible.length <= LAYOUT_ANIMATION_LIMIT;
 
   if (visible.length === 0) {
@@ -79,7 +80,7 @@ export function DishWall({ visible, grouped, stats, query, onWrite, onClearFilte
                 stat={stats.get(dish.id)}
                 index={indexOf.get(dish.id) ?? 0}
                 layoutEnabled={layoutEnabled}
-                onWrite={onWrite}
+                onOpen={onOpen}
               />
             ))}
           </div>

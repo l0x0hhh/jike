@@ -25,10 +25,11 @@ interface DishCardProps {
   index: number;
   /** 可见数量 ≤ 60 时启用布局重排动画 */
   layoutEnabled: boolean;
-  onWrite: (dish: Dish) => void;
+  // 查看与填写分开，卡片承担查看入口。
+  onOpen: (dish: Dish) => void;
 }
 
-export function DishCard({ dish, stat, index, layoutEnabled, onWrite }: DishCardProps) {
+export function DishCard({ dish, stat, index, layoutEnabled, onOpen }: DishCardProps) {
   const count = stat?.review_count ?? 0;
   const avg = count > 0 ? stat?.avg_rating ?? null : null;
 
@@ -43,8 +44,9 @@ export function DishCard({ dish, stat, index, layoutEnabled, onWrite }: DishCard
     >
       <button
         type="button"
-        onClick={() => onWrite(dish)}
-        aria-label={`为「${dish.name}」${count > 0 ? '再写一条' : '写第一条'}评价`}
+        // 点击整卡查看该菜的历史评价。
+        onClick={() => onOpen(dish)}
+        aria-label={`查看「${dish.name}」的菜品评价`}
         className="flex flex-1 items-start gap-4 p-4 text-left focus-visible:outline-none
                    focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600"
       >

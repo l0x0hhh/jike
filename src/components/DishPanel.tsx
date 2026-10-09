@@ -44,6 +44,8 @@ import { LayoutWarmup } from './motion/Stagger';
 // 需要 motion 编排的浮层：按需懒加载 + 不 SSR（motion 运行时离开首屏）
 const MotionSheet = dynamic(() => import('./motion/MotionSheet').then((m) => m.MotionSheet), { ssr: false });
 const ReviewDialog = dynamic(() => import('./ReviewDialog').then((m) => m.ReviewDialog), { ssr: false });
+// 菜品详情按需加载，先看评价再决定是否填写。
+const DishDetailDialog = dynamic(() => import('./dish/DishDetailDialog').then((m) => m.DishDetailDialog), { ssr: false });
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'default', label: '默认顺序' },
@@ -72,6 +74,9 @@ export default function DishPanel() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [target, setTarget] = useState<Dish | null>(null);
+  // 详情与填写表单互斥显示；关闭填写后回到原菜品详情。
+  const [detail, setDetail] = useState<Dish | null>(null);
+  const [detailRefresh, setDetailRefresh] = useState(0);
   const [toast, setToast] = useState('');
   const [showFeed, setShowFeed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -110,6 +115,8 @@ export default function DishPanel() {
           const health = getCloudHealth();
           if (!health.statsFailed) setStats(s);
           if (!health.reviewsFailed) setReviews(r);
+          // 同步打开的单菜历史，不受聚合列表 60 条限制。
+          setDetailRefresh(value => value + 1);
           setCloudDegraded(health.degraded);
         } while (refreshRequested.current && !submittingReview.current);
       } catch (error) {
@@ -167,7 +174,7 @@ export default function DishPanel() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // 浮层打开时让快捷键留在浮层内，避免把焦点移到被遮挡的搜索框。
-      if (target || showFeed) return;
+      if (target || detail || showFeed) return;
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
         searchRef.current?.focus();
@@ -175,7 +182,7 @@ export default function DishPanel() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [target, showFeed]);
+  }, [target, detail, showFeed]);
 
   // 空闲时预取浮层 chunk：保证首次打开弹窗 / 抽屉仍然是即时的（含完整进场动画）
   const [warmLayout, setWarmLayout] = useState(false);
@@ -183,6 +190,8 @@ export default function DishPanel() {
     const prefetch = () => {
       void import('./motion/MotionSheet');
       void import('./ReviewDialog');
+      // 空闲预取单菜详情，第一次点击不必等待下载。
+      void import('./dish/DishDetailDialog');
       // 预挂载一次 LayoutItem，摊销其首次渲染的一次性成本（详见 Stagger.LayoutWarmup）
       setWarmLayout(true);
     };
@@ -292,6 +301,8 @@ export default function DishPanel() {
       dataRevision.current += 1;
     }
     if (res.ok) {
+      // 返回详情时重新读取成功写入的评价。
+      setDetailRefresh(value => value + 1);
       setToast('评价已提交，感谢分享！');
       window.setTimeout(() => setToast(''), 2500);
     } else {
@@ -457,7 +468,8 @@ export default function DishPanel() {
           grouped={grouped}
           stats={stats}
           query={query}
-          onWrite={setTarget}
+          // 卡片先打开菜品详情，写评价由详情内按钮发起。
+          onOpen={setDetail}
           onClearFilters={() => {
             setQuery('');
             setActiveMerchant('all');
@@ -494,8 +506,10 @@ export default function DishPanel() {
         </div>
       </MotionSheet>
 
-      {/* ===== 评价弹窗 ===== */}
-      <ReviewDialog open={target !== null} dish={target} onClose={() => setTarget(null)} onSubmit={doSubmit} />
+      {/* 两种弹窗互斥挂载，避免焦点锁和页面滚动锁相互干扰。 */}
+      {detail && !target && <DishDetailDialog key={detail.id} dish={detail} stat={stats.get(detail.id)} refreshKey={detailRefresh}
+        onClose={() => setDetail(null)} onWrite={() => setTarget(detail)} />}
+      {target && <ReviewDialog open dish={target} onClose={() => setTarget(null)} onSubmit={doSubmit} />}
 
       {/* ===== Toast ===== */}
       <Toast message={toast} />

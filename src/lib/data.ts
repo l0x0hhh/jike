@@ -224,6 +224,33 @@ export async function fetchReviews(limit = 100): Promise<Review[]> {
   return (data ?? []) as Review[];
 }
 
+// 单菜评价采用时间与 ID 游标分页，新增评价不会使后续页面重复或漏读。
+export interface ReviewCursor { created_at: string; id: string }
+export interface DishReviewPage { reviews: Review[]; hasMore: boolean; cursor: ReviewCursor | null }
+export async function fetchDishReviews(dishId: number, cursor: ReviewCursor | null = null, limit = 10): Promise<DishReviewPage> {
+  // Supabase 默认最多返回 1000 行，留出一行探测后续页，避免大量历史被误判为已读完。
+  limit = Math.min(999, Math.max(1, limit));
+  const sb = getSupabase();
+  let rows: Review[];
+  if (!sb) {
+    rows = lsReadReviews().filter(review => review.dish_id === dishId)
+      .sort((a, b) => a.created_at === b.created_at ? (a.id < b.id ? 1 : a.id > b.id ? -1 : 0) : (a.created_at < b.created_at ? 1 : -1))
+      .filter(review => !cursor || review.created_at < cursor.created_at || (review.created_at === cursor.created_at && review.id < cursor.id))
+      .slice(0, limit + 1);
+  } else {
+    let query = sb.from('reviews').select('*').eq('dish_id', dishId)
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit + 1);
+    if (cursor) query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`);
+    const { data, error } = await query;
+    // 读取失败必须显示重试提示，不能伪装为暂无评价。
+    if (error) throw new Error('评价加载失败，请检查网络后重试');
+    rows = (data ?? []) as Review[];
+  }
+  const reviews = rows.slice(0, limit);
+  const last = reviews.at(-1);
+  return { reviews, hasMore: rows.length > limit, cursor: last ? { created_at: last.created_at, id: last.id } : null };
+}
+
 /** 提交评价 */
 export async function submitReview(draft: ReviewDraft): Promise<{ ok: boolean; error?: string }> {
   const payload = {
