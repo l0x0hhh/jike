@@ -172,3 +172,16 @@ create policy p_reviews_insert on public.reviews for insert
 -- 索引补充：菜品名模糊搜索（pg_trgm 已在文件开头创建）
 -- ============================================================
 create index if not exists idx_dishes_name on public.dishes using gin (name gin_trgm_ops);
+
+-- 实时评价：加入 Supabase 发布集合；重复执行安全，不改变已有的读写权限。
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'reviews'
+     ) then
+    alter publication supabase_realtime add table public.reviews;
+  end if;
+end;
+$$;

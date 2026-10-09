@@ -34,7 +34,8 @@ function Tab({ label, count, active, onClick }: TabProps) {
       aria-pressed={active}
       data-active={active}
       onClick={onClick}
-      className="chip shrink-0"
+      // 手机商家按钮扩大触控高度，桌面保留紧凑尺寸。
+      className="chip min-h-11 shrink-0 sm:min-h-0"
     >
       {label}
       {count ? <span className="tnum ml-1.5 opacity-60">{count}</span> : null}

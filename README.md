@@ -91,6 +91,11 @@ npm run dev        # http://localhost:3000
 
 **没配数据库也能跑**：未设置 Supabase 环境变量时自动降级为 localStorage 模式，
 全部功能可用（数据存本地浏览器），页面顶部会显示"本地演示模式"。
+
+<!-- 自动更新说明：区分云端实时通知、本地标签页同步及定时补查。 -->
+**评价自动更新**：云端收到新评价通知后刷新评价流、菜品评分和统计，通知按 600ms 合并。
+前台页面每 30 秒补查一次，并在切回前台或网络恢复时刷新；更新失败时保留已显示的数据。
+本地演示模式可同步同一浏览器、同一站点的多个标签页，跨设备共享评价需要配置 Supabase。
 适合先看 UI、给同学演示。
 
 ### 想直接打开看、不起服务？
@@ -114,6 +119,12 @@ NEXT_STATIC_EXPORT=1 npm run build && cp -r .build-export preview
 ### 1. 建表
 
 Supabase 控制台 → SQL Editor，粘贴执行 `supabase/schema.sql` 全文。
+
+<!-- 已有项目只需启用 reviews 的实时发布，无需重新执行整份建表脚本。 -->
+已有数据库可只执行 `schema.sql` 末尾的「实时评价」SQL 块，或者在 Supabase 的
+Publications 设置中，将 `public.reviews` 加入 `supabase_realtime`。
+配置依据：[Supabase Postgres Changes 官方文档](https://supabase.com/docs/guides/realtime/postgres-changes)。
+完成后在两台设备打开网页，在其中一台提交评价，另一台应自动显示新评价和最新统计。
 
 ### 2. 灌菜品数据
 

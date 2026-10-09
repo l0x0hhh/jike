@@ -11,6 +11,8 @@
  * 所以既有的键盘/读屏行为不回退（verify.mjs 会校验 radiogroup 语义）。
  */
 
+import type { KeyboardEvent } from 'react';
+
 interface NumericScaleProps {
   value: number;
   onChange?: (v: number) => void;
@@ -30,8 +32,9 @@ const MEANING: Record<number, string> = {
 };
 
 const BOX = {
-  sm: 'w-8 py-1 text-xs',
-  md: 'w-10 py-1.5 text-sm',
+  // 手机评分格保持 44px 触控尺寸；桌面可选评分仍保持紧凑。
+  sm: 'h-11 w-11 text-xs sm:h-auto sm:w-8 sm:py-1',
+  md: 'h-11 w-11 text-sm sm:h-auto sm:w-10 sm:py-1.5',
   lg: 'w-12 py-2.5 text-base',
 } as const;
 
@@ -45,6 +48,18 @@ export function NumericScale({
 }: NumericScaleProps) {
   const readonly = !onChange;
   const nums = Array.from({ length: max }, (_, i) => i + 1);
+  // 与单选组语义一致：方向键选择并移动焦点，Tab 仅进入已选项或第一项。
+  const onRadioKey = (event: KeyboardEvent<HTMLButtonElement>, n: number) => {
+    let next: number;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (n % max) + 1;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = ((n + max - 2) % max) + 1;
+    else if (event.key === 'Home') next = 1;
+    else if (event.key === 'End') next = max;
+    else return;
+    event.preventDefault();
+    onChange?.(next);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next - 1]?.focus();
+  };
 
   // ---- 只读：不给字形，只给数值 ----
   if (readonly) {
@@ -66,8 +81,10 @@ export function NumericScale({
             role="radio"
             aria-checked={value === n}
             aria-label={`${n} 分`}
+            tabIndex={value === n || (value === 0 && n === 1) ? 0 : -1}
             className={`scale-btn tnum ${BOX[size]}`}
             onClick={() => onChange?.(n)}
+            onKeyDown={(event) => onRadioKey(event, n)}
           >
             {n}
           </button>

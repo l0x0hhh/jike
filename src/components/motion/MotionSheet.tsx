@@ -14,8 +14,8 @@
  *  · 打开时锁定 body 滚动
  */
 
-import { AnimatePresence, motion, useReducedMotion, type PanInfo, type Variants } from 'motion/react';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { AnimatePresence, motion, useDragControls, useReducedMotion, type PanInfo, type Variants } from 'motion/react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { variants as v } from '@/lib/motion';
 import { MotionProvider } from './MotionProvider';
@@ -68,10 +68,33 @@ export function MotionSheet({
   const reduce = useReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFocused = useRef<HTMLElement | null>(null);
+  // 仅拖动顶部把手，正文的触摸滑动继续用于滚动表单。
+  const dragControls = useDragControls();
+  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 跟随手机可视视口，键盘出现和浏览器工具栏变化时重新计算浮层高度与位置。
+  useEffect(() => {
+    if (!open) return;
+    const visual = window.visualViewport;
+    const sync = () => {
+      const height = visual?.height ?? window.innerHeight;
+      const top = visual?.offsetTop ?? 0;
+      setViewport((previous) => previous?.height === height && previous.top === top ? previous : { height, top });
+    };
+    sync();
+    visual?.addEventListener('resize', sync);
+    visual?.addEventListener('scroll', sync);
+    window.addEventListener('resize', sync);
+    return () => {
+      visual?.removeEventListener('resize', sync);
+      visual?.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, [open]);
 
   // 锁定 body 滚动
   useEffect(() => {
@@ -113,7 +136,8 @@ export function MotionSheet({
     const panel = panelRef.current;
     if (!panel) return;
     const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      (el) => el.offsetParent !== null || el === document.activeElement,
+      // 单选组未选项 tabindex=-1，不应成为 Tab 焦点锁的边界。
+      (el) => el.tabIndex >= 0 && (el.offsetParent !== null || el === document.activeElement),
     );
     if (nodes.length === 0) {
       e.preventDefault();
@@ -151,6 +175,12 @@ export function MotionSheet({
     variant === 'drawer'
       ? 'fixed inset-0 z-50 flex justify-end bg-ink-900/40 backdrop-blur-sm'
       : 'fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 backdrop-blur-sm sm:items-center sm:p-4';
+  const viewportStyle = viewport ? {
+    top: viewport.top,
+    bottom: 'auto',
+    height: viewport.height,
+    '--sheet-viewport-height': `${viewport.height}px`,
+  } as CSSProperties : undefined;
 
   return createPortal(
     <MotionProvider>
@@ -159,6 +189,7 @@ export function MotionSheet({
           <motion.div
             key="sheet-overlay"
             className={overlayClass}
+            style={viewportStyle}
             variants={v.backdrop}
             initial="initial"
             animate="animate"
@@ -181,12 +212,18 @@ export function MotionSheet({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={onKeyDown}
               drag={dragEnabled ? 'y' : false}
+              dragControls={dragControls}
+              dragListener={false}
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.5 }}
               onDragEnd={dragEnabled ? handleDragEnd : undefined}
             >
               {variant === 'dialog' && isMobile && dismissible && (
-                <div aria-hidden="true" className="flex shrink-0 justify-center pb-1 pt-2.5">
+                <div
+                  aria-hidden="true"
+                  className="flex shrink-0 touch-none justify-center pb-1 pt-2.5"
+                  onPointerDown={dragEnabled ? (event) => dragControls.start(event) : undefined}
+                >
                   <span className="h-1.5 w-10 rounded-full bg-ink-300" />
                 </div>
               )}

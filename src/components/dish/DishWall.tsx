@@ -70,8 +70,8 @@ export function DishWall({ visible, grouped, stats, query, onWrite, onClearFilte
               </span>
             </h2>
           )}
-          {/* 免媒体查询的响应网格：300px 起自动换列 */}
-          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
+          {/* 窄屏列宽不超过容器，宽屏仍以 300px 为基准自动换列。 */}
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
             {group.dishes.map((dish) => (
               <DishCard
                 key={dish.id}

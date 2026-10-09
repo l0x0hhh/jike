@@ -80,8 +80,38 @@ const cloudHealth = { statsFailed: false, reviewsFailed: false, lastMessage: '' 
 export function getCloudHealth() {
   return {
     degraded: cloudHealth.statsFailed || cloudHealth.reviewsFailed,
+    // 分开记录两类请求，后台更新失败时保留各自最后一次成功的数据。
+    statsFailed: cloudHealth.statsFailed,
+    reviewsFailed: cloudHealth.reviewsFailed,
     message: cloudHealth.lastMessage,
   };
+}
+
+/** 新评价通知：云端订阅新增记录，本地同步同一浏览器的其他标签页；返回清理函数。 */
+export function subscribeToReviewUpdates(onChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const sb = getSupabase();
+  if (!sb) {
+    const onStorage = (event: StorageEvent) => {
+      if (event.storageArea === localStorage && (event.key === 'chy_reviews' || event.key === null)) onChange();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('chy:review-added', onChange);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('chy:review-added', onChange);
+    };
+  }
+
+  // 统计由同一事务的触发器更新；收到评价通知后统一拉取，避免重复累加自己的乐观评价。
+  const channel = sb
+    .channel('dish-review-updates')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reviews' }, onChange)
+    .subscribe((status) => {
+      // 首次连接与断线重连后校准一次，补上订阅建立期间可能遗漏的评价。
+      if (status === 'SUBSCRIBED') onChange();
+    });
+  return () => { void sb.removeChannel(channel); };
 }
 
 // ---------- 设备指纹（不可逆，仅用于限流去重） ----------

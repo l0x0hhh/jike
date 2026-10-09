@@ -29,9 +29,9 @@ const TAG_POOL = [
 
 const DEFAULT_VISIBLE_TAGS = 8;
 
-/** 下划线式输入：只留底部 2px 实线，减少框线噪声 */
+/** 手机输入使用 16px 字号，保持聚焦时稳定；下划线式输入减少框线噪声。 */
 const INPUT_CLS =
-  'w-full border-0 border-b-2 border-ink-900 bg-transparent px-0 py-2 text-[15px] font-medium ' +
+  'w-full border-0 border-b-2 border-ink-900 bg-transparent px-0 py-2 text-base sm:text-[15px] font-medium ' +
   'text-ink-900 placeholder:font-normal placeholder:text-ink-400 focus:border-accent-600 ' +
   'focus:outline-none';
 
@@ -72,7 +72,8 @@ function FieldLabel({
       {note && <span className="text-xs font-normal text-ink-400">{note}</span>}
     </>
   );
-  const cls = 'mb-2 flex items-center gap-2 text-[13px] font-bold text-ink-900';
+  // 窄屏字段提示允许换行，避免标签说明挤出弹窗。
+  const cls = 'mb-2 flex flex-wrap items-center gap-2 text-[13px] font-bold text-ink-900';
   return htmlFor ? (
     <label htmlFor={htmlFor} className={cls}>
       {inner}
@@ -160,10 +161,11 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
       onClose={onClose}
       variant="dialog"
       labelledBy="review-dialog-title"
-      panelClassName="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden border-2 border-ink-900 bg-paper shadow-elevation-3"
+      // 使用浮层提供的可视高度，软键盘缩小视口后仍能看到底部操作。
+      panelClassName="flex min-h-0 max-h-[min(92dvh,calc(var(--sheet-viewport-height,100dvh)-1rem))] w-full max-w-lg flex-col overflow-hidden border-2 border-ink-900 bg-paper shadow-elevation-3"
     >
       {/* 头部 */}
-      <header className="flex shrink-0 items-start justify-between gap-3 border-b-2 border-ink-900 bg-paper px-5 py-4">
+      <header className="flex shrink-0 items-start justify-between gap-3 border-b-2 border-ink-900 bg-paper px-4 py-3 sm:px-5 sm:py-4">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-500">
             {merchantName}
@@ -178,7 +180,8 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
           onClick={onClose}
           aria-label="关闭"
           hoverScale={1}
-          className="btn-ghost shrink-0 !px-2.5 !py-0.5 text-xl leading-none"
+          // 手机关闭按钮保持完整触控区域。
+          className="btn-ghost h-11 w-11 shrink-0 !p-0 text-xl leading-none"
         >
           ×
         </Pressable>
@@ -208,7 +211,8 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
             className="flex min-h-0 flex-1 flex-col"
             exit={{ opacity: 0, y: dist.xs, transition: { duration: duration.fast, ease: ease.in } }}
           >
-            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
+            {/* 正文独立滚动，缩短视口时为固定提交按钮留出空间。 */}
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:space-y-6 sm:px-5 sm:py-5">
               {/* 昵称 */}
               <div>
                 <FieldLabel htmlFor="nick" required>
@@ -275,7 +279,7 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
                     <button
                       key={tag}
                       type="button"
-                      className="chip"
+                      className="chip min-h-11 sm:min-h-0"
                       data-active={tags.includes(tag)}
                       aria-pressed={tags.includes(tag)}
                       onClick={() => toggleTag(tag)}
@@ -287,7 +291,7 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
                 <button
                   type="button"
                   onClick={() => setShowMore((v) => !v)}
-                  className="mt-2.5 text-[13px] font-bold text-accent-600 underline decoration-2 underline-offset-4 hover:text-ink-900"
+                  className="mt-1 min-h-11 text-[13px] font-bold text-accent-600 underline decoration-2 underline-offset-4 hover:text-ink-900"
                 >
                   {showMore ? '收起标签' : `更多标签 (${TAG_POOL.length - DEFAULT_VISIBLE_TAGS})`}
                 </button>
@@ -312,6 +316,11 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
                 </p>
               </div>
 
+              {/* 说明放入滚动正文，减少短屏中固定页脚占用的高度。 */}
+              <p className="text-[11px] font-medium leading-relaxed text-ink-500">
+                评价提交后不可修改或删除 · 价格或菜名有误可在原表反馈
+              </p>
+
               {status === 'error' && (
                 <div
                   role="alert"
@@ -323,7 +332,7 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
             </div>
 
             {/* 底部固定操作条：CTA 始终可见 */}
-            <footer className="shrink-0 border-t-2 border-ink-900 bg-paper px-5 py-3.5">
+            <footer className="shrink-0 border-t-2 border-ink-900 bg-paper px-4 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3.5">
               <AnimatePresence initial={false}>
                 {missing.length > 0 && (
                   <m.p
@@ -346,9 +355,6 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
               >
                 {status === 'submitting' ? '提交中…' : '提交评价'}
               </Pressable>
-              <p className="mt-2.5 text-center text-[11px] font-medium leading-relaxed text-ink-500">
-                评价提交后不可修改或删除 · 价格或菜名有误可在原表反馈
-              </p>
             </footer>
           </m.div>
         )}

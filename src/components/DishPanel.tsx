@@ -24,6 +24,7 @@ import {
   isCloudEnabled,
   merchants,
   meta,
+  subscribeToReviewUpdates,
   submitReview,
   type Dish,
   type DishStat,
@@ -76,6 +77,11 @@ export default function DishPanel() {
   const [scrolled, setScrolled] = useState(false);
   const [cloudDegraded, setCloudDegraded] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  // 自动更新与提交共用请求队列；提交期间保持乐观结果，旧请求不能覆盖新状态。
+  const dataRequest = useRef<Promise<void> | null>(null);
+  const refreshRequested = useRef(false);
+  const submittingReview = useRef(false);
+  const dataRevision = useRef(0);
 
   // 顶部导航：滚动过阈值后浮现细阴影（纯原生监听，避免 motion 进首屏）
   useEffect(() => {
@@ -88,52 +94,80 @@ export default function DishPanel() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // 拉取统计数据（一次性，避免 N+1）。silent 用于后台校准，不闪骨架
+  // 合并并发刷新，网络失败时保留最后成功的数据；后台更新不闪骨架。
   const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    refreshRequested.current = true;
+    if (submittingReview.current) return;
+    if (dataRequest.current) return dataRequest.current;
     if (!opts?.silent) setLoading(true);
-    const [s, r] = await Promise.all([fetchStats(), fetchReviews(60)]);
-    setStats(s);
-    setReviews(r);
-    setCloudDegraded(getCloudHealth().degraded);
-    if (!opts?.silent) setLoading(false);
+    const request = (async () => {
+      try {
+        do {
+          refreshRequested.current = false;
+          const revision = dataRevision.current;
+          const [s, r] = await Promise.all([fetchStats(), fetchReviews(60)]);
+          if (revision !== dataRevision.current || submittingReview.current) continue;
+          const health = getCloudHealth();
+          if (!health.statsFailed) setStats(s);
+          if (!health.reviewsFailed) setReviews(r);
+          setCloudDegraded(health.degraded);
+        } while (refreshRequested.current && !submittingReview.current);
+      } catch (error) {
+        console.error('[reviews] 更新失败', error);
+        setCloudDegraded(true);
+      } finally {
+        dataRequest.current = null;
+        setLoading(false);
+      }
+    })();
+    dataRequest.current = request;
+    return request;
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // 本地降级模式提交后静默刷新
-  useEffect(() => {
-    const handler = () => loadData({ silent: true });
-    window.addEventListener('chy:review-added', handler);
-    return () => window.removeEventListener('chy:review-added', handler);
-  }, [loadData]);
-
-  // 回到前台时静默校准。
-  // 为什么需要：页面只在挂载时拉一次数据，之后**永不刷新**。手机切后台/锁屏，
-  // 再打开时看到的仍是打开那一刻的快照——这正是「电脑上刚写的评价、手机上
-  // 一直没有」的成因（不是网络问题：那台手机明明写入成功过）。
-  // 5s 节流，避免 visibilitychange 与 focus 双触发时重复打两次请求。
+  // 实时通知合并到一次刷新；30 秒补查覆盖未启用订阅和断线场景，后台页面暂停拉取。
   useEffect(() => {
     let last = 0;
+    let scheduled: number | undefined;
+    const schedule = () => {
+      if (document.visibilityState !== 'visible' || scheduled !== undefined) return;
+      scheduled = window.setTimeout(() => {
+        scheduled = undefined;
+        if (document.visibilityState === 'visible') void loadData({ silent: true });
+      }, 600);
+    };
     const refresh = () => {
       if (document.visibilityState !== 'visible') return;
       const now = Date.now();
       if (now - last < 5000) return;
       last = now;
-      loadData({ silent: true });
+      void loadData({ silent: true });
     };
+    const unsubscribe = subscribeToReviewUpdates(schedule);
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) void loadData({ silent: true });
+    }, 30_000);
     document.addEventListener('visibilitychange', refresh);
     window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
     return () => {
+      unsubscribe();
+      window.clearInterval(poll);
+      window.clearTimeout(scheduled);
       document.removeEventListener('visibilitychange', refresh);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
     };
   }, [loadData]);
 
   // 快捷键：/ 聚焦搜索
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // 浮层打开时让快捷键留在浮层内，避免把焦点移到被遮挡的搜索框。
+      if (target || showFeed) return;
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
         searchRef.current?.focus();
@@ -141,7 +175,7 @@ export default function DishPanel() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [target, showFeed]);
 
   // 空闲时预取浮层 chunk：保证首次打开弹窗 / 抽屉仍然是即时的（含完整进场动画）
   const [warmLayout, setWarmLayout] = useState(false);
@@ -236,6 +270,9 @@ export default function DishPanel() {
 
     const prevReviews = reviews;
     const prevStats = stats;
+    // 使提交前已发出的读取失效，保护即时显示的新评价。
+    submittingReview.current = true;
+    dataRevision.current += 1;
     const optimistic: Review = {
       id: `optimistic-${Date.now()}`,
       dish_id: dishId,
@@ -245,15 +282,25 @@ export default function DishPanel() {
     setReviews((prev) => [optimistic, ...prev].slice(0, 60));
     setStats((prev) => applyOptimisticStat(prev, dishId, draft.rating));
 
-    const res = await submitReview({ dish_id: dishId, ...draft });
+    let res: { ok: boolean; error?: string };
+    try {
+      res = await submitReview({ dish_id: dishId, ...draft });
+    } catch {
+      res = { ok: false, error: '提交失败，请检查网络后重试' };
+    } finally {
+      submittingReview.current = false;
+      dataRevision.current += 1;
+    }
     if (res.ok) {
       setToast('评价已提交，感谢分享！');
       window.setTimeout(() => setToast(''), 2500);
-      await loadData({ silent: true });
     } else {
       setReviews(prevReviews);
       setStats(prevStats);
     }
+    // 成功后校准；失败后也补回提交期间其他人新增的评价。
+    // 写入成功即可完成提交，后台校准不延长提交按钮的等待时间。
+    void loadData({ silent: true });
     return res;
   };
 
@@ -262,23 +309,25 @@ export default function DishPanel() {
       {/* ===== 顶部 ===== */}
       <header
         className={
-          'sticky top-0 z-30 border-b-2 border-ink-900 bg-paper/95 backdrop-blur transition-shadow duration-fast ' +
+          // 手机头部随页面滚动，避免长期遮住短屏；桌面保留固定工具栏。
+          'relative top-0 z-30 border-b-2 border-ink-900 bg-paper/95 backdrop-blur transition-shadow duration-fast sm:sticky ' +
           (scrolled ? 'shadow-elevation-2' : '')
         }
       >
         <div className="mx-auto max-w-6xl px-4 pb-3 pt-4">
           {/* 报头：超大 display 字 + 收紧字距，右侧数字用等宽对齐 */}
-          <div className="flex items-end justify-between gap-4">
+          {/* 手机标题独占一行，计数横向排列，避免 320px 下标题被挤断。 */}
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
             <h1 className="font-display text-[clamp(26px,4.4vw,44px)] font-normal leading-[0.95] tracking-[-0.035em] text-ink-900">
               春晖园<span className="text-accent-600">菜品评价</span>
             </h1>
-            <div className="shrink-0 text-right">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:block sm:shrink-0 sm:text-right">
               <div className="tnum text-[13px] font-bold text-ink-900">{meta.dishes} 道菜</div>
-              <div className="tnum mt-0.5 text-[11px] font-semibold tracking-[0.04em] text-ink-500">
+              <div className="tnum text-[11px] font-semibold tracking-[0.04em] text-ink-500 sm:mt-0.5">
                 {meta.merchants} 家商家 · {overview.totalReviews} 条评价
               </div>
               {!isCloudEnabled() && (
-                <div className="mt-1.5 inline-block border border-warn-500 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.08em] text-warn-700">
+                <div className="inline-block border border-warn-500 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.08em] text-warn-700 sm:mt-1.5">
                   本地演示模式
                 </div>
               )}
@@ -286,23 +335,24 @@ export default function DishPanel() {
           </div>
 
           {/* 工具条：搜索 / 排序 / 评价流入口排在同一条基准线上，用 2px 规则线分割 */}
-          <div className="mt-3.5 flex items-stretch border-t-2 border-ink-900">
-            <div className="relative min-w-0 flex-1">
+          {/* 手机搜索独占整行，排序与评价入口并排；桌面维持同排工具条。 */}
+          <div className="mt-3 grid grid-cols-2 items-stretch border-t-2 border-ink-900 sm:mt-3.5 sm:flex">
+            <div className="relative col-span-2 min-w-0 border-b-2 border-ink-900 sm:flex-1 sm:border-b-0">
               <input
                 ref={searchRef}
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜菜名　按 / 聚焦"
+                placeholder="搜索菜名"
                 aria-label="搜索菜品"
-                className="w-full border-0 bg-transparent py-3 text-[14px] font-medium text-ink-900 placeholder:font-normal placeholder:text-ink-400 focus:outline-none"
+                className="min-h-11 w-full border-0 bg-transparent py-2.5 pr-11 text-base font-medium text-ink-900 placeholder:font-normal placeholder:text-ink-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600 sm:text-[14px]"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
                   aria-label="清空搜索"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 px-2 text-xl leading-none text-ink-400 hover:text-ink-900"
+                  className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-xl leading-none text-ink-500 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-600"
                 >
                   ×
                 </button>
@@ -312,7 +362,7 @@ export default function DishPanel() {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
               aria-label="排序方式"
-              className="shrink-0 cursor-pointer border-0 border-l-2 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 focus:outline-none"
+              className="min-h-11 min-w-0 w-full cursor-pointer border-0 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600 sm:w-auto sm:shrink-0 sm:border-l-2"
             >
               {SORTS.map((s) => (
                 <option key={s.key} value={s.key}>
@@ -325,7 +375,7 @@ export default function DishPanel() {
               onClick={() => setShowFeed(true)}
               aria-expanded={showFeed}
               hoverScale={1}
-              className="shrink-0 border-l-2 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 transition-colors duration-200 hover:bg-ink-900 hover:text-paper"
+              className="flex min-h-11 min-w-0 items-center justify-center border-l-2 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 transition-colors duration-200 hover:bg-ink-900 hover:text-paper focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600 sm:shrink-0"
             >
               最新评价
               {overview.totalReviews > 0 && (
@@ -370,12 +420,12 @@ export default function DishPanel() {
         {/* ===== 概览统计 ===== */}
         <OverviewSection loading={loading} overview={overview} totalDishes={allDishes.length} />
 
-        {/* 冷启动引导：整体没数据时给一个明确行动 */}
+        {/* 冷启动引导：手机压缩为一行操作，便于更快到达菜品列表。 */}
         {!loading && !cloudDegraded && overview.totalReviews === 0 && (
-          <FadeIn className="mb-5 flex flex-col items-start gap-3 border-2 border-accent-600 bg-accent-50 p-4 sm:flex-row sm:items-center">
+          <FadeIn className="mb-5 flex items-center gap-3 border-2 border-accent-600 bg-accent-50 p-3 sm:p-4">
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-ink-900">还没有人评价过</p>
-              <p className="tnum mt-0.5 text-[13px] font-medium text-ink-600">
+              <p className="text-[13px] font-bold text-ink-900 sm:text-[15px]">还没有人评价过</p>
+              <p className="tnum mt-0.5 hidden text-[13px] font-medium text-ink-600 sm:block">
                 吃过哪道菜就写哪道，{allDishes.length - overview.coveredDishes} 道菜等你来第一票
               </p>
             </div>
@@ -385,7 +435,7 @@ export default function DishPanel() {
                 const first = allDishes.find((d) => !stats.get(d.id)) || allDishes[0];
                 setTarget(first);
               }}
-              className="btn-primary w-full shrink-0 sm:w-auto"
+              className="btn-primary min-h-11 shrink-0 !px-3 text-[13px] sm:!px-5 sm:text-[15px]"
             >
               写第一条评价
             </Pressable>
@@ -433,7 +483,8 @@ export default function DishPanel() {
             onClick={() => setShowFeed(false)}
             aria-label="关闭"
             hoverScale={1}
-            className="btn-ghost !px-2.5 !py-0.5 text-xl leading-none"
+            // 关闭按钮保持 44px 触控区域。
+            className="btn-ghost h-11 w-11 !p-0 text-xl leading-none"
           >
             ×
           </Pressable>

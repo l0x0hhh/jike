@@ -14,14 +14,20 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 interface StatCardProps {
   label: string;
+  // 手机短标签保持完整含义，完整名称继续用于桌面和读屏。
+  mobileLabel?: string;
   loading: boolean;
   children: ReactNode;
 }
 
-export function StatCard({ label, loading, children }: StatCardProps) {
+export function StatCard({ label, mobileLabel = label, loading, children }: StatCardProps) {
   return (
-    <div className="flex h-full flex-col border-2 border-ink-900 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-500">{label}</p>
+    // 手机统计卡减少内边距，四项同排时保留可读标签与数字。
+    <div className="flex h-full min-w-0 flex-col border-2 border-ink-900 p-2 sm:p-4">
+      <p className="text-[10px] font-bold uppercase text-ink-500 sm:tracking-[0.16em]">
+        <span aria-hidden="true" className="sm:hidden">{mobileLabel}</span>
+        <span className="sr-only sm:not-sr-only">{label}</span>
+      </p>
       <div className="relative mt-2 min-h-[2.5rem] flex-1">
         {/* 骨架层 */}
         <div
@@ -30,7 +36,7 @@ export function StatCard({ label, loading, children }: StatCardProps) {
             loading ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         >
-          <span className="skeleton h-8 w-20" />
+          <span className="skeleton h-5 w-full max-w-20 sm:h-8" />
         </div>
         {/* 内容层 */}
         <div
