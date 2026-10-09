@@ -28,6 +28,8 @@ const TAG_POOL = [
 ];
 
 const DEFAULT_VISIBLE_TAGS = 8;
+// 无需填写昵称，沿用评价数据结构并自动提供匿名展示名称。
+const DEFAULT_NICKNAME = '匿名食客';
 
 /** 手机输入使用 16px 字号，保持聚焦时稳定；下划线式输入减少框线噪声。 */
 const INPUT_CLS =
@@ -91,7 +93,6 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
   }, [dish]);
   const shown = dish ?? cached;
 
-  const [nickname, setNickname] = useState('');
   const [rating, setRating] = useState(0);
   const [taste, setTaste] = useState(0);
   const [portion, setPortion] = useState(0);
@@ -101,12 +102,10 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
   const [errMsg, setErrMsg] = useState('');
   const [showMore, setShowMore] = useState(false);
-  const [touchedNickname, setTouchedNickname] = useState(false);
 
   // 打开时复位表单（关闭期间保留内容，避免出场动画时表单闪空）
   useEffect(() => {
     if (!open) return;
-    setNickname('');
     setRating(0);
     setTaste(0);
     setPortion(0);
@@ -116,17 +115,16 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
     setStatus('idle');
     setErrMsg('');
     setShowMore(false);
-    setTouchedNickname(false);
   }, [open]);
 
   const merchantName = shown ? merchants.find((x) => x.id === shown.merchant_id)?.name ?? '' : '';
   const priceText = shown ? formatPrice(shown) : '';
 
   const visibleTags = showMore ? TAG_POOL : TAG_POOL.slice(0, DEFAULT_VISIBLE_TAGS);
-  const canSubmit = nickname.trim().length > 0 && rating > 0 && status !== 'submitting';
+  // 总体评分是唯一必填项，选填维度可以保持未评分。
+  const canSubmit = rating > 0 && status !== 'submitting';
 
   const missing: string[] = [];
-  if (!nickname.trim()) missing.push('昵称');
   if (rating === 0) missing.push('总体评分');
 
   const toggleTag = (tag: string) =>
@@ -138,7 +136,8 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
     if (!canSubmit) return;
     setStatus('submitting');
     const res = await onSubmit({
-      nickname: nickname.trim(),
+      // 自动补上匿名昵称，兼容现有数据库的昵称必填约束。
+      nickname: DEFAULT_NICKNAME,
       rating,
       taste: taste || null,
       portion: portion || null,
@@ -213,28 +212,7 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
           >
             {/* 正文独立滚动，缩短视口时为固定提交按钮留出空间。 */}
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:space-y-6 sm:px-5 sm:py-5">
-              {/* 昵称 */}
-              <div>
-                <FieldLabel htmlFor="nick" required>
-                  你的昵称
-                </FieldLabel>
-                <input
-                  id="nick"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  onBlur={() => setTouchedNickname(true)}
-                  maxLength={20}
-                  placeholder="如：小虾"
-                  aria-invalid={touchedNickname && !nickname.trim()}
-                  className={INPUT_CLS}
-                />
-                {touchedNickname && !nickname.trim() && (
-                  <p className="mt-1.5 text-xs font-semibold text-err-700">
-                    还没有填写昵称，写个名字才能提交
-                  </p>
-                )}
-              </div>
-
+              {/* 直接从总体评分开始，省去每次重复填写昵称。 */}
               {/* 总评分 */}
               <div>
                 <FieldLabel required>总体评分</FieldLabel>
@@ -243,11 +221,15 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
 
               {/* 三维评分 */}
               <div className="border-2 border-ink-900 p-3.5">
-                <p className="mb-3 flex items-center gap-2 text-[13px] font-bold text-ink-900">
+                <p className="mb-2 flex items-center gap-2 text-[13px] font-bold text-ink-900">
                   分维度评分
                   <span className="border border-ink-300 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.1em] text-ink-500">
                     选填
                   </span>
+                </p>
+                {/* 明确三个维度独立选填，同时说明取消方式。 */}
+                <p className="mb-3 text-xs leading-relaxed text-ink-500">
+                  每项独立选填，可同时评分，也可全部跳过。再次点击已选分数可取消。
                 </p>
                 <div className="space-y-3">
                   {(
@@ -257,7 +239,8 @@ export function ReviewDialog({ open, dish, onClose, onSubmit }: ReviewDialogProp
                       ['性价比', value, setValue],
                     ] as const
                   ).map(([label, val, setter]) => (
-                    <div key={label} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                    // 每个维度独立成行，手机上先显示名称再显示评分，避免误读为三选一。
+                    <div key={label} className="flex flex-col items-start gap-2 border-b border-ink-200 pb-3 last:border-b-0 last:pb-0 sm:flex-row sm:justify-between">
                       <span className="w-14 shrink-0 text-[13px] font-bold text-ink-700">{label}</span>
                       <NumericScale
                         value={val}

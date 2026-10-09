@@ -72,27 +72,40 @@ export function NumericScale({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      <div role="radiogroup" aria-label={label} className="flex">
+    // 选填项支持再次点击取消；必填项仍保留单选，状态提示与清除入口独立显示。
+    <div className="flex flex-col items-start gap-1.5">
+      <div role="radiogroup" aria-label={label} aria-required={!optional} className="flex">
         {nums.map((n) => (
           <button
             key={n}
             type="button"
             role="radio"
             aria-checked={value === n}
-            aria-label={`${n} 分`}
+            aria-label={`${n} 分${optional && value === n ? '，再次点击取消' : ''}`}
             tabIndex={value === n || (value === 0 && n === 1) ? 0 : -1}
-            className={`scale-btn tnum ${BOX[size]}`}
-            onClick={() => onChange?.(n)}
+            className={`scale-btn tnum relative ${BOX[size]}`}
+            onClick={() => onChange?.(optional && value === n ? 0 : n)}
             onKeyDown={(event) => onRadioKey(event, n)}
           >
             {n}
+            {/* 勾选标记补充颜色提示，让每行的已选状态更明确。 */}
+            {value === n && <span aria-hidden="true" className="absolute right-0.5 top-0.5 text-[9px] leading-none">✓</span>}
           </button>
         ))}
       </div>
-      <span className="text-xs font-semibold text-ink-500">
-        {value > 0 ? MEANING[value] : optional ? '未评' : `满分 ${max}`}
-      </span>
+      <div className="flex w-full items-center justify-between gap-3">
+        <span aria-live="polite" className="text-xs font-semibold text-ink-500">
+          {value > 0 ? `已选 ${value} 分 · ${MEANING[value]}` : '未评分'}
+        </span>
+        {/* 清除仅适用于选填项，清空值 0 在表单提交时转换为 null。 */}
+        {optional && (
+          <button type="button" aria-label={`清除${label}`} disabled={value === 0}
+            className="min-h-11 px-2 text-xs font-bold text-accent-600 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-600 disabled:text-ink-400 disabled:no-underline"
+            onClick={() => onChange?.(0)}>
+            清除
+          </button>
+        )}
+      </div>
     </div>
   );
 }

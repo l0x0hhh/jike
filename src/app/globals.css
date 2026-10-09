@@ -102,20 +102,24 @@
   .scale-btn + .scale-btn {
     border-left-width: 0;
   }
-  .scale-btn:hover {
-    @apply bg-ink-900 text-paper;
+  /* 悬停不再显示黑方块；只在精确指针设备启用，避免手机保留悬停态。 */
+  @media (hover: hover) and (pointer: fine) {
+    .scale-btn:hover {
+      @apply bg-accent-50;
+    }
   }
   .scale-btn:focus-visible {
     @apply outline-none ring-2 ring-accent-600 ring-offset-1 ring-offset-paper;
   }
-  .scale-btn[aria-pressed='true'] {
+  /* 与 radio 的 aria-checked 保持一致，选中项使用蓝色加组件内的勾选标记。 */
+  .scale-btn[aria-checked='true'] {
     @apply border-accent-600 bg-accent-600 text-white;
   }
-  .scale-btn[aria-pressed='true']:hover {
+  .scale-btn[aria-checked='true']:hover {
     @apply border-accent-700 bg-accent-700 text-white;
   }
   /* 选中格右侧相邻格补回左边线，避免出现断口 */
-  .scale-btn[aria-pressed='true'] + .scale-btn {
+  .scale-btn[aria-checked='true'] + .scale-btn {
     border-left-width: 2px;
     border-left-color: #14110e;
   }
