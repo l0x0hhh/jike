@@ -25,11 +25,13 @@ export const duration = {
 } as const;
 
 /** 缓动曲线。out = 快出慢收，最贴合真实物理的入场手感 */
-export const ease: Record<'out' | 'in' | 'inOut' | 'emphasized', Bezier> = {
+export const ease: Record<'out' | 'in' | 'inOut' | 'emphasized' | 'springy', Bezier> = {
   out: [0.22, 1, 0.36, 1],
   in: [0.4, 0, 1, 1],
   inOut: [0.65, 0, 0.35, 1],
   emphasized: [0.16, 1, 0.3, 1],
+  // 首屏 CSS 按压的轻量回弹；真正的物理弹簧仍由 motion 在交互层承担。
+  springy: [0.34, 1.56, 0.64, 1],
 };
 
 /** 弹簧参数（结构兼容 motion 的 Transition）。snappy=控件，soft=列表/布局，gentle=抽屉/大浮层 */
@@ -41,8 +43,9 @@ export interface SpringConfig {
 }
 
 export const spring: Record<'snappy' | 'soft' | 'gentle', SpringConfig> = {
-  snappy: { type: 'spring', stiffness: 520, damping: 34, mass: 0.9 },
-  soft: { type: 'spring', stiffness: 320, damping: 32, mass: 1 },
+  // 保留轻微过冲，不做夸张果冻感；大浮层仍使用更收敛的 gentle。
+  snappy: { type: 'spring', stiffness: 520, damping: 26, mass: 0.9 },
+  soft: { type: 'spring', stiffness: 320, damping: 26, mass: 1 },
   gentle: { type: 'spring', stiffness: 240, damping: 28, mass: 1 },
 };
 

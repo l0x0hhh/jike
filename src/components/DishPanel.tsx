@@ -3,8 +3,8 @@
 /**
  * 主面板（编排层）
  *
- * 结构：sticky 头部（标题 / 搜索 / 排序 / 评分门槛）→ 概览统计 → 冷启动引导
- *      → 商家 Tab → 菜品墙 → 最新评价抽屉 → 评价弹窗 → Toast → 页脚
+ * 结构：sticky 头部（标题 / 搜索 / 评价入口）→ 概览统计 → 冷启动引导
+ *      → 商家与评分筛选 → 结果数量与排序 → 菜品墙 → 最新评价抽屉 → 评价弹窗 → Toast → 页脚
  *
  * 交互增强：
  *  · 乐观提交：提交即把新评价插入「最新评价」并即时反馈，失败回滚
@@ -23,7 +23,6 @@ import {
   getCloudHealth,
   isCloudEnabled,
   merchants,
-  meta,
   subscribeToReviewUpdates,
   submitReview,
   type Dish,
@@ -37,6 +36,7 @@ import { OverviewSection } from './dish/OverviewSection';
 import { RatingFilter } from './dish/RatingFilter';
 import { ReviewFeed } from './dish/ReviewFeed';
 import { Toast } from './dish/Toast';
+import { SiteNav } from './SiteNav';
 import { FadeIn } from './motion/FadeIn';
 import { Pressable } from './motion/Pressable';
 import { LayoutWarmup } from './motion/Stagger';
@@ -49,7 +49,7 @@ const DishDetailDialog = dynamic(() => import('./dish/DishDetailDialog').then((m
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'default', label: '默认顺序' },
-  { key: 'rating', label: '评分最高' },
+  { key: 'rating', label: '评分从高到低' },
   { key: 'most-reviewed', label: '评价最多' },
   { key: 'price-asc', label: '价格从低到高' },
   { key: 'price-desc', label: '价格从高到低' },
@@ -268,6 +268,13 @@ export default function DishPanel() {
       .filter((g) => g.dishes.length > 0);
   }, [visible, activeMerchant, query]);
 
+  const hasActiveFilters = query.trim().length > 0 || activeMerchant !== 'all' || minRating > 0;
+  const clearFilters = () => {
+    setQuery('');
+    setActiveMerchant('all');
+    setMinRating(0);
+  };
+
   // 提交：乐观插入 → 成功即时反馈并后台校准；失败回滚
   const doSubmit = async (draft: ReviewFormDraft) => {
     if (!target) return { ok: false, error: '缺少目标菜品' };
@@ -317,44 +324,24 @@ export default function DishPanel() {
 
   return (
     <div className="min-h-screen">
-      {/* ===== 顶部 ===== */}
+      {/* PC 与移动端统一：导航和搜索工具栏整体吸顶。 */}
       <header
         className={
-          // 手机头部随页面滚动，避免长期遮住短屏；桌面保留固定工具栏。
-          'relative top-0 z-30 border-b-2 border-ink-900 bg-paper/95 backdrop-blur transition-shadow duration-fast sm:sticky ' +
+          'sticky top-0 z-30 bg-paper/95 backdrop-blur transition-shadow duration-fast ' +
           (scrolled ? 'shadow-elevation-2' : '')
         }
       >
-        <div className="mx-auto max-w-6xl px-4 pb-3 pt-4">
-          {/* 报头：超大 display 字 + 收紧字距，右侧数字用等宽对齐 */}
-          {/* 手机标题独占一行，计数横向排列，避免 320px 下标题被挤断。 */}
-          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-            <h1 className="font-display text-[clamp(26px,4.4vw,44px)] font-normal leading-[0.95] tracking-[-0.035em] text-ink-900">
-              春晖园<span className="text-accent-600">菜品评价</span>
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:block sm:shrink-0 sm:text-right">
-              <div className="tnum text-[13px] font-bold text-ink-900">{meta.dishes} 道菜</div>
-              <div className="tnum text-[11px] font-semibold tracking-[0.04em] text-ink-500 sm:mt-0.5">
-                {meta.merchants} 家商家 · {overview.totalReviews} 条评价
-              </div>
-              {!isCloudEnabled() && (
-                <div className="inline-block border border-warn-500 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.08em] text-warn-700 sm:mt-1.5">
-                  本地演示模式
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 工具条：搜索 / 排序 / 评价流入口排在同一条基准线上，用 2px 规则线分割 */}
-          {/* 手机搜索独占整行，排序与评价入口并排；桌面维持同排工具条。 */}
-          <div className="mt-3 grid grid-cols-2 items-stretch border-t-2 border-ink-900 sm:mt-3.5 sm:flex">
-            <div className="relative col-span-2 min-w-0 border-b-2 border-ink-900 sm:flex-1 sm:border-b-0">
+        <SiteNav active="dishes" />
+        <div className="mx-auto max-w-6xl px-4 pb-3 pt-3 sm:pt-0">
+          {/* 搜索区上下两条线与下方筛选标题严格对齐。 */}
+          <div className="flex items-stretch border-y-2 border-ink-900">
+            <div className="relative min-w-0 flex-1">
               <input
                 ref={searchRef}
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜索菜名"
+                placeholder="搜索菜名，看看大家怎么说"
                 aria-label="搜索菜品"
                 className="min-h-11 w-full border-0 bg-transparent py-2.5 pr-11 text-base font-medium text-ink-900 placeholder:font-normal placeholder:text-ink-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600 sm:text-[14px]"
               />
@@ -369,24 +356,12 @@ export default function DishPanel() {
                 </button>
               )}
             </div>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              aria-label="排序方式"
-              className="min-h-11 min-w-0 w-full cursor-pointer border-0 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600 sm:w-auto sm:shrink-0 sm:border-l-2"
-            >
-              {SORTS.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
             <Pressable
               type="button"
               onClick={() => setShowFeed(true)}
               aria-expanded={showFeed}
               hoverScale={1}
-              className="flex min-h-11 min-w-0 items-center justify-center border-l-2 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 transition-colors duration-200 hover:bg-ink-900 hover:text-paper focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600 sm:shrink-0"
+              className="flex min-h-11 shrink-0 items-center justify-center border-l-2 border-ink-900 bg-paper px-3 text-[13px] font-bold text-ink-900 transition-colors duration-200 hover:bg-ink-900 hover:text-paper focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600"
             >
               最新评价
               {overview.totalReviews > 0 && (
@@ -396,9 +371,6 @@ export default function DishPanel() {
               )}
             </Pressable>
           </div>
-
-          {/* 评分门槛筛选 */}
-          <RatingFilter value={minRating} onChange={setMinRating} />
         </div>
       </header>
 
@@ -428,6 +400,12 @@ export default function DishPanel() {
       )}
 
       <main id="main" className="mx-auto max-w-6xl px-4 py-5">
+        <h1 className="sr-only">春晖园菜品评价</h1>
+        {!isCloudEnabled() && (
+          <p role="status" className="mb-3 inline-block border border-warn-500 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.08em] text-warn-700">
+            本地演示模式 · 评价仅保存在此浏览器
+          </p>
+        )}
         {/* ===== 概览统计 ===== */}
         <OverviewSection loading={loading} overview={overview} totalDishes={allDishes.length} />
 
@@ -453,14 +431,53 @@ export default function DishPanel() {
           </FadeIn>
         )}
 
-        {/* ===== 商家 Tab ===== */}
-        <MerchantTabs
-          merchants={merchants}
-          totalDishes={allDishes.length}
-          active={activeMerchant}
-          counts={merchantStats}
-          onChange={setActiveMerchant}
-        />
+        {/* ===== 筛选：商家与评分集中呈现，明确它们决定“看哪些菜” ===== */}
+        <section aria-labelledby="filter-title" className="mb-4">
+          <h2 id="filter-title" className="mb-3 border-b-2 border-ink-900 pb-2 font-display text-[20px] leading-none text-ink-900">
+            筛选菜品
+          </h2>
+          <MerchantTabs
+            merchants={merchants}
+            totalDishes={allDishes.length}
+            active={activeMerchant}
+            counts={merchantStats}
+            onChange={setActiveMerchant}
+          />
+          <RatingFilter value={minRating} onChange={setMinRating} />
+        </section>
+
+        {/* ===== 结果工具条：数量表达筛选结果，排序只改变顺序 ===== */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-y-2 border-ink-900 py-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <p aria-live="polite" aria-atomic="true" className="tnum text-[12px] font-bold text-ink-900">
+              {hasActiveFilters ? `筛选出 ${visible.length} 道菜` : `共 ${visible.length} 道菜`}
+            </p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="min-h-11 text-[12px] font-bold text-accent-600 underline decoration-2 underline-offset-4 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-600"
+              >
+                清除筛选
+              </button>
+            )}
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <label htmlFor="dish-sort" className="shrink-0 text-[11px] font-bold text-ink-500">排序方式</label>
+            <select
+              id="dish-sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="min-h-11 min-w-0 cursor-pointer border-2 border-ink-900 bg-paper px-2.5 text-[12px] font-bold text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600"
+            >
+              {SORTS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {/* ===== 菜品墙 ===== */}
         <DishWall
@@ -470,11 +487,7 @@ export default function DishPanel() {
           query={query}
           // 卡片先打开菜品详情，写评价由详情内按钮发起。
           onOpen={setDetail}
-          onClearFilters={() => {
-            setQuery('');
-            setActiveMerchant('all');
-            setMinRating(0);
-          }}
+          onClearFilters={clearFilters}
         />
       </main>
 

@@ -11,7 +11,7 @@
 
 三层动效架构（**令牌层 → 原语层 → 业务层**）：
 **入场 = 纯 CSS**（默认态即可见，SSR / 无 JS 都可见），
-**交互与布局 = 按需懒加载的 motion**（弹窗外壳 + 布局重排）。
+**交互与布局 = 按需懒加载的 motion**（弹窗外壳 + 布局重排 + 弹窗内评分反馈）。
 motion 运行时**不进首屏**，且完整支持 `prefers-reduced-motion`。
 
 ---
@@ -54,13 +54,13 @@ v1 把入场写成 motion 的 `initial={{ opacity: 0 }}`，这个隐藏态被渲
 |---|---|---|
 | 页头 | `DishPanel` sticky header | 滚动后**浮现阴影**（原生 scroll 监听 + CSS `transition-shadow`） |
 | 概览统计 | `OverviewSection` / `StatCard` | 4 张卡错峰入场（CSS）；大数字滚动计数（rAF）；覆盖率进度条 `scaleX` 生长（CSS） |
-| 商家 Tab | `MerchantTabs` | 选中态**静态高亮**（CSS；见 §5 说明，已不再滑动） |
+| 商家 Tab | `MerchantTabs` | 选中态**静态高亮**；选中项平滑滚动到可视区，两侧按可滚动状态渐隐 |
 | 评分门槛 | `RatingFilter` | `radiogroup` 语义 + 选中反馈 |
 | 菜品墙 | `DishWall` / `DishCard` | 前 12 张错峰入场（CSS）；筛选/排序后 ≤60 张 `layout` 重排（motion，懒加载）；卡片 hover 轻浮起 |
 | 评价填写 | `ReviewDialog` → `MotionSheet` | 弹窗**弹簧缩放入场**、背景遮罩淡入、**成功态**弹簧图标、乐观提交 |
 | 评价流抽屉 | 复用 `MotionSheet` 的 `drawer` | **右侧滑入 / 移动端底部上滑**；移动端可**下拉关闭** |
-| 数字量表（评分） | `NumericScale` | 选中格 `pop`（CSS 关键帧） |
-| 反馈 | `Toast` | 底部**滑入淡入**，淡出下移（CSS） |
+| 数字量表（评分） | `NumericScale` | 选中格与按压使用 `spring.snappy`（随评价弹窗懒加载） |
+| 反馈 | `Toast` | 底部**回弹式滑入淡入**，淡出下移（CSS） |
 | 加载态 | 全局 | 骨架屏 ↔ 内容的**交叉淡入淡出**（CSS） |
 
 **范围原则**：只新增动效与令牌，**不删减任何既有功能**；
@@ -83,8 +83,8 @@ v1 把入场写成 motion 的 `initial={{ opacity: 0 }}`，这个隐藏态被渲
 ### 2.2 节奏（时长与缓动）
 
 - **时长**：`instant 0.1s` / `fast 0.16s` / `base 0.24s` / `slow 0.36s` / `slower 0.52s`
-- **缓动**：`out [0.22,1,0.36,1]`（快出慢收）、`in`、`inOut`、`emphasized`
-- **弹簧**：`snappy`（控件）、`soft`（列表/布局）、`gentle`（抽屉/大浮层）
+- **缓动**：`out [0.22,1,0.36,1]`（快出慢收）、`in`、`inOut`、`emphasized`、`springy`（首屏 CSS 轻回弹）
+- **弹簧**：`snappy`（控件，轻微过冲）、`soft`（列表/布局）、`gentle`（抽屉/大浮层，保持收敛）
 - **节奏记忆点**：**"入场稍慢、反馈秒回、退出利落"**
 
 ### 2.3 错峰（stagger）—— 371 张卡不能全动
@@ -99,17 +99,17 @@ v1 把入场写成 motion 的 `initial={{ opacity: 0 }}`，这个隐藏态被渲
 | 概览卡入场 | `animate-enter` + 错峰 | `base` / `ease.out` | CSS |
 | 大数字滚动 | rAF + cubic-bezier | `slow` / `ease.out` | JS(rAF) |
 | 覆盖率进度条 | `scaleX`（origin left） | `slow` / `ease.out` | CSS transition |
-| 商家 Tab 高亮 | 静态 class | `colors` | CSS |
+| 商家 Tab 高亮 / 导航 | 静态 class + 容器滚动 + 边缘渐隐 | `colors` / 原生平滑滚动 | CSS / 原生 |
 | 菜品墙前 12 张 | `animate-enter` + 错峰 | `base` / `ease.out` | CSS |
-| 菜品墙重排 | `layout`（≤60 张） | `spring.soft` | motion（懒） |
-| 卡片 hover | `translateY(-2px)` + 阴影 | `fast` / `ease.out` | CSS |
-| 评分选中 | `chy-pop` [1,1.18,1] | `fast` / `ease.out` | CSS |
-| 按钮按下 | `scale(0.97)` / hover `1.02` | `fast` / `ease.out` | CSS |
+| 菜品墙重排 | `layout="position"`（≤60 张） | `spring.soft` | motion（懒） |
+| 卡片 hover / 按压 | 整卡反白 / 内部按钮轻压缩 | `base` / `springy` | CSS |
+| 评分选中 / 按压 | 数字缩放 + 物理回弹 | `spring.snappy` | motion（随弹窗懒加载） |
+| 按钮按下 / 松开 | `scale(0.97)` / 回弹复位 | `instant` / `base` + `springy` | CSS |
 | 弹窗出入场 | `dialogPop`（scale 0.94→1 + y） | `spring.snappy` | motion（懒） |
 | 抽屉出入场 | `slideInRight` / `slideUp` | `spring.gentle/snappy` | motion（懒） |
 | 遮罩 | `backdrop`（opacity） | `base` / `fast` | motion（懒） |
 | 成功态图标 | `scaleIn` + 弹簧 | `spring.snappy` | motion（懒） |
-| Toast | 上滑淡入 / 淡出下移 | `base` / `ease.out` | CSS |
+| Toast | 回弹上滑淡入 / 淡出下移 | `base` / `springy` → `ease.in` | CSS |
 | 骨架→内容 | 交叉 opacity | `base` / `ease.out` | CSS |
 | 页头阴影 | class 切换 | `fast` | CSS |
 
@@ -167,7 +167,7 @@ v1 把入场写成 motion 的 `initial={{ opacity: 0 }}`，这个隐藏态被渲
 ├──────────────────────────────────────────────────────────────┤
 │ 原语层  src/components/motion/*                                │
 │  CSS 原语：FadeIn · StaggerGroup/StaggerItem · Pressable · AnimatedNumber │
-│  motion 原语（懒加载）：MotionSheet · LayoutItem · MotionProvider(配置)  │
+│  motion 原语（懒加载）：MotionSheet · LayoutItem · NumericScale          │
 ├──────────────────────────────────────────────────────────────┤
 │ 令牌层  src/lib/motion-tokens.ts  （纯数值 · 唯一真源）          │
 │  duration · ease · spring · distance · stagger · MAX_STAGGER_ITEMS │
@@ -196,23 +196,25 @@ v1 把入场写成 motion 的 `initial={{ opacity: 0 }}`，这个隐藏态被渲
 | 弱网首屏 | ❌ 等 chunk，~400–630ms 空白 | ✅ 首帧即播 |
 | 首屏体积 | ❌ motion 运行时进首屏 | ✅ 不进 |
 
-### 5.3 motion 只负责"真正需要 JS 编排"的两处
+### 5.3 motion 只负责需要物理弹簧或 JS 编排的交互
 
 | 原语 | 职责 | 加载方式 |
 |---|---|---|
 | `MotionSheet` | 弹窗/抽屉唯一外壳：进出场、遮罩、Esc/遮罩关闭、焦点陷阱、焦点归还、`role=dialog`+`aria-modal`、滚动锁、移动端下拉关闭 | `next/dynamic(ssr:false)` + 空闲预取 |
-| `LayoutItem` | 菜品墙 ≤60 张时的 `layout` 平滑重排 + hover 上浮 | `next/dynamic(ssr:false)` + 空闲预取 |
+| `LayoutItem` | 菜品墙 ≤60 张时的 `layout="position"` + `spring.soft` 平滑重排 | `next/dynamic(ssr:false)` + 空闲预取 |
+| `NumericScale` | 评分选中与按压的 `spring.snappy` 回弹 | 仅由懒加载的 `ReviewDialog` 引用；卡片只读数字拆至 `ScoreReadout.tsx`，避免共享回首屏 |
 
-- `MotionProvider` 不再是根布局的 LazyMotion，而是一个轻量 `MotionConfig reducedMotion="user"`
-  边界，由上面两个懒加载原语各自使用 —— 这样 motion 运行时只随它们进入客户端。
+- `MotionProvider` 不再是根布局的 LazyMotion，而是 `MotionSheet` 内轻量的
+  `MotionConfig reducedMotion="user"` 边界；`LayoutItem` 与 `NumericScale` 分别用 `useReducedMotion` 关闭变换。
+  所有 motion 引用都位于按需 chunk，不进入首屏关键路径。
 - 空闲预取（`requestIdleCallback`，降级 `setTimeout`）：保证**首次打开弹窗/抽屉仍是即时的**
   （QA 实测首次打开有完整进场动画，未退化）。
 
-### 5.4 已知取舍：商家 Tab 高亮不再滑动
+### 5.4 已知取舍：商家 Tab 高亮不滑动
 
 `MerchantTabs` 是 SSR 导航，若它静态 import motion 会把 motion 拉回首屏。
-为让 motion 彻底移出首屏，这里改用**纯 CSS 静态高亮**（激活态视觉一致），
-代价是切换时高亮不再"滑动"。如后续更看重该滑动效果，可将其做成独立懒加载小岛。
+这里保留**纯 CSS 静态高亮**，并补上选中项自动滚动到可视区、两侧按滚动位置渐隐与按压回弹；
+不为装饰性的滑动高亮增加首屏运行时。
 
 ---
 

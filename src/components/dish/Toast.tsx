@@ -36,7 +36,7 @@ export function Toast({ message }: { message: string }) {
       <div
         role="status"
         aria-live="polite"
-        className={`border-2 border-ink-900 bg-accent-600 px-5 py-2.5 text-sm font-bold text-white transition duration-base ease-out-soft ${
+        className={`border-2 border-ink-900 bg-accent-600 px-5 py-2.5 text-sm font-bold text-white transition duration-base ${visible ? 'ease-springy' : 'ease-in-soft'} ${
           visible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
         }`}
       >

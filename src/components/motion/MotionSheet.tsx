@@ -17,7 +17,7 @@
 import { AnimatePresence, motion, useDragControls, useReducedMotion, type PanInfo, type Variants } from 'motion/react';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { variants as v } from '@/lib/motion';
+import { spring, variants as v } from '@/lib/motion';
 import { MotionProvider } from './MotionProvider';
 
 export type SheetVariant = 'dialog' | 'drawer';
@@ -216,6 +216,7 @@ export function MotionSheet({
               dragListener={false}
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={{ top: 0, bottom: 0.5 }}
+              dragTransition={{ bounceStiffness: spring.snappy.stiffness, bounceDamping: spring.snappy.damping }}
               onDragEnd={dragEnabled ? handleDragEnd : undefined}
             >
               {variant === 'dialog' && isMobile && dismissible && (

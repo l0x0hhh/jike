@@ -38,9 +38,6 @@
     # 允许 Supabase 端点在浏览器直连写入
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
 
-# 刻意不配置 SPA 兜底 [[redirects]]：
-# 全站只有一个页面（评价详情是弹窗、不是路由，代码里没有任何 next/link 或
-# useRouter 跳转），不存在需要兜底的客户端路由；而 `/* -> /index.html (200)`
-# 唯一的实际效果是把不存在的路径伪装成首页、掩盖真实 404，并可能与 Netlify
-# Next.js Runtime 生成的路由规则产生优先级歧义。
-# 只有 output: 'export' 纯静态导出模式才需要这种兜底。
+# 刻意不配置 SPA 兜底 [[redirects]]：菜品与日报都是明确的 Next.js 路由，
+# 评价详情仍使用弹窗。`/* -> /index.html (200)` 只会把不存在的路径伪装成首页、
+# 掩盖真实 404，并可能与 Netlify Next.js Runtime 的路由规则产生优先级歧义。

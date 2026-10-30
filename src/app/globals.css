@@ -76,10 +76,31 @@
     @apply bg-ink-900 text-paper;
   }
 
+  /* 首屏按钮的轻量回弹：按下立即收缩，松开用 springy 曲线复位，无需加载 JS 动效库。 */
+  .pressable {
+    transform: scale(1);
+    transition-property: transform, color, background-color, border-color, box-shadow;
+    @apply duration-base ease-springy;
+  }
+  .pressable:active:not(:disabled) {
+    transform: scale(var(--press-scale, 0.97));
+    @apply duration-instant;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .pressable:hover:not(:disabled):not(:active) {
+      transform: scale(var(--press-hover, 1.02));
+    }
+  }
+
   /* 筛选 chip：粗边直角，选中即反白 —— 不靠圆角和底色区分状态 */
   .chip {
     @apply cursor-pointer select-none border-2 border-ink-900 bg-paper px-3 py-2
-           text-xs font-bold transition-all duration-200;
+           text-xs font-bold transition-[color,background-color,border-color,transform] duration-base ease-springy;
+    transform: scale(1);
+  }
+  .chip:active {
+    transform: scale(0.96);
+    @apply duration-instant;
   }
   .chip:hover {
     @apply bg-ink-900 text-paper;

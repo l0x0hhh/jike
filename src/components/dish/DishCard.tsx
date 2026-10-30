@@ -15,8 +15,9 @@
 
 import { formatPrice, type Dish, type DishStat } from '@/lib/data';
 import { stagger as staggerTokens } from '@/lib/motion';
-import { ScoreReadout } from '../NumericScale';
+import { Pressable } from '../motion/Pressable';
 import { StaggerItem } from '../motion/Stagger';
+import { ScoreReadout } from './ScoreReadout';
 
 interface DishCardProps {
   dish: Dish;
@@ -42,12 +43,14 @@ export function DishCard({ dish, stat, index, layoutEnabled, onOpen }: DishCardP
       className="card group flex flex-col transition-colors duration-base ease-out-soft
                  hover:border-accent-600 hover:bg-accent-600"
     >
-      <button
+      <Pressable
         type="button"
+        hoverScale={1}
+        scaleTap={0.985}
         // 点击整卡查看该菜的历史评价。
         onClick={() => onOpen(dish)}
         aria-label={`查看「${dish.name}」的菜品评价`}
-        className="flex flex-1 items-start gap-4 p-4 text-left focus-visible:outline-none
+        className="flex w-full flex-1 items-start gap-4 p-4 text-left focus-visible:outline-none
                    focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-600"
       >
         <ScoreReadout
@@ -69,7 +72,7 @@ export function DishCard({ dish, stat, index, layoutEnabled, onOpen }: DishCardP
             </div>
           )}
         </div>
-      </button>
+      </Pressable>
 
       {/* 原表已有评价：作为题注保留，不因换设计而丢信息 */}
       {dish.existingReview && (

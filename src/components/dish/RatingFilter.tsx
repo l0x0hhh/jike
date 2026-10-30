@@ -35,10 +35,10 @@ export function RatingFilter({ value, onChange }: RatingFilterProps) {
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label="评分筛选" className="mt-3 flex flex-wrap items-center gap-2">
-      {/* 手机用「全部评分」区分商家筛选，保留完整的读屏标签。 */}
-      <span className="sr-only text-[10px] font-bold uppercase tracking-[0.16em] text-ink-500 sm:not-sr-only">
-        评分门槛
+    <div role="radiogroup" aria-label="评分筛选" className="flex flex-wrap items-center gap-2">
+      {/* 手机也显示可见标签，避免把评分筛选误解为另一种排序。 */}
+      <span className="w-full text-[10px] font-bold uppercase tracking-[0.16em] text-ink-500 sm:w-auto">
+        评分筛选
       </span>
       {OPTIONS.map((o, index) => (
         <button

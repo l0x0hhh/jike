@@ -32,8 +32,10 @@ const nextConfig: NextConfig = {
   // Netlify 会自行处理 Next.js 产物，开了反而与 `next start` 不兼容。
   poweredByHeader: false,
   compress: true,
+  // 仅暴露构建模式，供静态文件预览选择 ./news.html；不包含任何私密配置。
+  env: { NEXT_PUBLIC_STATIC_EXPORT: isStaticExport ? '1' : '0' },
   // 支持用环境变量切换构建目录（本地避开被安全守卫占用的路径）
-  distDir: process.env.NEXT_DIST_DIR || '.next',
+  distDir: process.env.NEXT_DIST_DIR || (isStaticExport ? '.build-export' : '.next'),
 
   ...(isStaticExport
     ? {

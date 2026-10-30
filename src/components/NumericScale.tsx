@@ -11,7 +11,9 @@
  * 所以既有的键盘/读屏行为不回退（verify.mjs 会校验 radiogroup 语义）。
  */
 
+import { motion, useReducedMotion } from 'motion/react';
 import type { KeyboardEvent } from 'react';
+import { spring } from '@/lib/motion';
 
 interface NumericScaleProps {
   value: number;
@@ -47,6 +49,7 @@ export function NumericScale({
   max = 5,
 }: NumericScaleProps) {
   const readonly = !onChange;
+  const reduce = useReducedMotion();
   const nums = Array.from({ length: max }, (_, i) => i + 1);
   // 与单选组语义一致：方向键选择并移动焦点，Tab 仅进入已选项或第一项。
   const onRadioKey = (event: KeyboardEvent<HTMLButtonElement>, n: number) => {
@@ -75,23 +78,35 @@ export function NumericScale({
     // 选填项支持再次点击取消；必填项仍保留单选，状态提示与清除入口独立显示。
     <div className="flex flex-col items-start gap-1.5">
       <div role="radiogroup" aria-label={label} aria-required={!optional} className="flex">
-        {nums.map((n) => (
-          <button
-            key={n}
-            type="button"
-            role="radio"
-            aria-checked={value === n}
-            aria-label={`${n} 分${optional && value === n ? '，再次点击取消' : ''}`}
-            tabIndex={value === n || (value === 0 && n === 1) ? 0 : -1}
-            className={`scale-btn tnum relative ${BOX[size]}`}
-            onClick={() => onChange?.(optional && value === n ? 0 : n)}
-            onKeyDown={(event) => onRadioKey(event, n)}
-          >
-            {n}
-            {/* 勾选标记补充颜色提示，让每行的已选状态更明确。 */}
-            {value === n && <span aria-hidden="true" className="absolute right-0.5 top-0.5 text-[9px] leading-none">✓</span>}
-          </button>
-        ))}
+        {nums.map((n) => {
+          const selected = value === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={`${n} 分${optional && selected ? '，再次点击取消' : ''}`}
+              tabIndex={selected || (value === 0 && n === 1) ? 0 : -1}
+              className={`scale-btn tnum relative ${BOX[size]}`}
+              onClick={() => onChange?.(optional && selected ? 0 : n)}
+              onKeyDown={(event) => onRadioKey(event, n)}
+            >
+              <motion.span
+                key={selected ? 'selected' : 'idle'}
+                className="relative flex h-full w-full items-center justify-center"
+                initial={selected && !reduce ? { scale: 0.72 } : false}
+                animate={{ scale: 1 }}
+                whileTap={reduce ? undefined : { scale: 0.88 }}
+                transition={spring.snappy}
+              >
+                {n}
+                {/* 勾选标记补充颜色提示，让每行的已选状态更明确。 */}
+                {selected && <span aria-hidden="true" className="absolute right-0.5 top-0.5 text-[9px] leading-none">✓</span>}
+              </motion.span>
+            </button>
+          );
+        })}
       </div>
       <div className="flex w-full items-center justify-between gap-3">
         <span aria-live="polite" className="text-xs font-semibold text-ink-500">
@@ -106,50 +121,6 @@ export function NumericScale({
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-/**
- * 只读大数字（卡片上的视觉主角）
- * 数字用 tabular-nums 对齐，未评时不显示「0」而显示破折号——
- * 0 分和「没评过」是两件事，不能用同一个符号表达。
- */
-export function ScoreReadout({
-  value,
-  count,
-  max = 5,
-  className = '',
-}: {
-  value: number | null | undefined;
-  count?: number;
-  max?: number;
-  className?: string;
-}) {
-  const rated = typeof value === 'number' && value > 0;
-
-  return (
-    <div className={`flex shrink-0 flex-col items-center ${className}`}>
-      {rated ? (
-        <span className="font-display tnum text-[40px] leading-[0.86] font-normal text-accent-600">
-          {value.toFixed(1)}
-        </span>
-      ) : (
-        /* 未评：用小号浅灰破折号而不是同尺寸大横杠 —— 40px 的「—」会被误读成加载条 */
-        <span
-          className="font-display text-[26px] leading-[1.32] font-normal text-ink-300"
-          aria-hidden="true"
-        >
-          —
-        </span>
-      )}
-      <span className="mt-1.5 border-t-2 border-ink-900 pt-0.5 text-[9px] font-bold tracking-[0.14em] text-ink-500">
-        {rated ? `满分 ${max}` : '未评'}
-      </span>
-      <span className="sr-only">
-        {rated ? `${value.toFixed(1)} 分（满分 ${max}）` : '尚未评分'}
-        {count ? `，共 ${count} 条评价` : ''}
-      </span>
     </div>
   );
 }

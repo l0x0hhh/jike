@@ -127,6 +127,7 @@ const config: Config = {
         'in-soft': bezierToCss(easeTok.in),
         'in-out-soft': bezierToCss(easeTok.inOut),
         emphasized: bezierToCss(easeTok.emphasized),
+        springy: bezierToCss(easeTok.springy),
       },
       // 与 src/lib/motion-tokens.ts 同源：CSS 过渡时长
       transitionDuration: {

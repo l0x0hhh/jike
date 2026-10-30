@@ -12,6 +12,7 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { spring } from '@/lib/motion';
 
 export type LayoutTag = 'div' | 'article' | 'li' | 'section';
 
@@ -30,25 +31,25 @@ export function LayoutItem({ children, className, as = 'div', hoverY }: LayoutIt
   switch (as) {
     case 'article':
       return (
-        <motion.article layout={!reduce} initial={false} whileHover={whileHover} className={className}>
+        <motion.article layout={reduce ? false : 'position'} initial={false} transition={spring.soft} whileHover={whileHover} className={className}>
           {children}
         </motion.article>
       );
     case 'li':
       return (
-        <motion.li layout={!reduce} initial={false} whileHover={whileHover} className={className}>
+        <motion.li layout={reduce ? false : 'position'} initial={false} transition={spring.soft} whileHover={whileHover} className={className}>
           {children}
         </motion.li>
       );
     case 'section':
       return (
-        <motion.section layout={!reduce} initial={false} whileHover={whileHover} className={className}>
+        <motion.section layout={reduce ? false : 'position'} initial={false} transition={spring.soft} whileHover={whileHover} className={className}>
           {children}
         </motion.section>
       );
     default:
       return (
-        <motion.div layout={!reduce} initial={false} whileHover={whileHover} className={className}>
+        <motion.div layout={reduce ? false : 'position'} initial={false} transition={spring.soft} whileHover={whileHover} className={className}>
           {children}
         </motion.div>
       );

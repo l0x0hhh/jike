@@ -39,7 +39,7 @@ export function DishWall({ visible, grouped, stats, query, onOpen, onClearFilter
     return (
       <FadeIn className="border-2 border-dashed border-ink-300 px-6 py-20 text-center">
         <p className="font-display text-[26px] leading-tight text-ink-900">
-          没有找到「{query}」相关的菜
+          {query ? `没有找到「${query}」相关的菜` : '没有符合当前筛选条件的菜'}
         </p>
         <p className="mt-2 text-[13px] font-medium text-ink-500">
           换个词试试，或清除筛选条件
