@@ -1,5 +1,6 @@
 'use client';
 
+// 菜品盲盒收纳在顶部按钮，结果接入原有详情弹窗。
 /**
  * 主面板（编排层）
  *
@@ -31,6 +32,7 @@ import {
 } from '@/lib/data';
 import type { MinRating, ReviewFormDraft, SortKey } from '@/types/dish-panel';
 import { DishWall } from './dish/DishWall';
+import { DishMysteryBox } from './dish/DishMysteryBox';
 import { MerchantTabs } from './dish/MerchantTabs';
 import { OverviewSection } from './dish/OverviewSection';
 import { RatingFilter } from './dish/RatingFilter';
@@ -356,6 +358,7 @@ export default function DishPanel() {
                 </button>
               )}
             </div>
+            <DishMysteryBox dishes={allDishes} merchants={merchants} stats={stats} onOpen={setDetail} />
             <Pressable
               type="button"
               onClick={() => setShowFeed(true)}
@@ -408,6 +411,7 @@ export default function DishPanel() {
         )}
         {/* ===== 概览统计 ===== */}
         <OverviewSection loading={loading} overview={overview} totalDishes={allDishes.length} />
+
 
         {/* 冷启动引导：手机压缩为一行操作，便于更快到达菜品列表。 */}
         {!loading && !cloudDegraded && overview.totalReviews === 0 && (

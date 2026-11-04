@@ -1,12 +1,13 @@
+-- 新建数据库后还须执行 hardening.sql，以启用精确汇总与基础限流。
 -- ============================================================
 -- 春晖园菜品评价面板 · 数据库 schema
 -- 平台：Supabase（PostgreSQL 15）
 --
 -- 并发设计要点：
 -- 1. 读：菜品目录为静态数据，随代码发布，不查库 → 读并发由 CDN 承担
--- 2. 写：reviews 单表直写，Postgres 单表支撑日 10w+ 写入无压力
--- 3. 防刷：anon 直写 + RLS 限流策略 + 服务端频率校验（见 rate-limits 表）
--- 4. 一致性：唯一约束防重复，聚合走触发器维护 dish_stats，避免实时 count
+-- 2. 写：评价由浏览器直连数据库；容量需要按实际部署压测
+-- 3. 防刷：RLS 校验字段，hardening.sql 增加按客户端标识的基础限流
+-- 4. 一致性：hardening.sql 回填评分总和并维护聚合
 -- ============================================================
 
 -- 菜品名模糊搜索依赖 pg_trgm，必须先于相关索引创建
@@ -150,8 +151,7 @@ create policy p_dish_stats_read on public.dish_stats for select using (true);
 drop policy if exists p_reviews_read on public.reviews;
 create policy p_reviews_read on public.reviews for select using (true);
 
--- 评价：免登录可写入，但字段级约束收窄——只允许写这几个列，
--- 且内容长度受限（防刷屏/防存储滥用）。禁止客户端指定 created_at 伪造时间。
+-- 评价：免登录可写入，RLS 检查部分字段长度；时间由 hardening.sql 的触发器覆盖。
 drop policy if exists p_reviews_insert on public.reviews;
 create policy p_reviews_insert on public.reviews for insert
   with check (

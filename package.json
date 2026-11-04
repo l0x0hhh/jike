@@ -8,15 +8,16 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "seed:parse": "node .tools/parse.js",
-    "seed:db": "node .tools/seed.mjs",
-    "check:data": "node .tools/parse.js",
+    "seed:parse": "node scripts/parse.cjs",
+    "seed:db": "node scripts/seed.mjs",
+    "check:data": "node scripts/check-data.cjs",
+    "test:ids": "node scripts/test-stable-ids.cjs",
     "audit:deps": "npm audit --omit=dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.58.0",
     "motion": "^14.0.0",
-    "next": "16.4.0",
+    "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -25,8 +26,9 @@
     "@types/react": "19.1.9",
     "@types/react-dom": "19.1.7",
     "autoprefixer": "10.4.21",
-    "postcss": "8.5.3",
+    "postcss": "8.5.32",
     "tailwindcss": "3.4.17",
     "typescript": "5.8.3"
-  }
+  },
+  "packageManager": "pnpm@12.16.1+sha512.091d1dee7927575661b25dab3c2ae31cafc1c54d6b71ed6a6600cf0c1cb10434a447eae14015f1b23e2e6bedeed79df94a932e2164d2832280dce3fb32f656d1"
 }

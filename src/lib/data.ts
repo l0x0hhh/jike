@@ -1,3 +1,4 @@
+// 评价数据访问：保留服务端限流提示，并从明细计算准确的本地平均分。
 /**
  * 数据访问层
  *
@@ -174,12 +175,13 @@ export function checkRateLimit(): { ok: boolean; retryAfter: number } {
 
 function computeStatsLocally(reviews: Review[]): Map<number, DishStat> {
   const map = new Map<number, DishStat>();
+  const sums = new Map<number, number>();
   for (const r of reviews) {
     const cur = map.get(r.dish_id) || { dish_id: r.dish_id, review_count: 0, avg_rating: null };
     cur.review_count += 1;
-    cur.avg_rating = cur.avg_rating
-      ? Math.round(((cur.avg_rating * (cur.review_count - 1) + r.rating) / cur.review_count) * 100) / 100
-      : r.rating;
+    const sum = (sums.get(r.dish_id) ?? 0) + r.rating;
+    sums.set(r.dish_id, sum);
+    cur.avg_rating = Math.round((sum / cur.review_count) * 100) / 100;
     map.set(r.dish_id, cur);
   }
   return map;
@@ -287,6 +289,9 @@ export async function submitReview(draft: ReviewDraft): Promise<{ ok: boolean; e
   });
 
   if (error) {
+    if (error.message.includes('review rate limit exceeded')) {
+      return { ok: false, error: '提交太频繁啦，请稍后再试' };
+    }
     // 区分业务错误与网络错误，给出可行动提示
     if (error.message.includes('violates row-level security')) {
       // 这句话的含义是「RLS 正在正常拦截」，不是「RLS 没开启」。
