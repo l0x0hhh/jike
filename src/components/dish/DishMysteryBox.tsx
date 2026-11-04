@@ -1,6 +1,6 @@
 'use client';
 
-// 盲盒使用连续转轴与减速曲线揭晓预先抽中的随机菜品。
+// 盲盒在手机和电脑上居中显示，并使用减速转轴揭晓随机菜品。
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { formatPrice, type Dish, type DishStat, type Merchant } from '@/lib/data';
@@ -94,8 +94,8 @@ export function DishMysteryBox({ dishes, merchants, stats, onOpen }: {
       className="min-h-11 shrink-0 border-l-2 border-ink-900 bg-accent-600 px-3 text-[13px] font-bold text-white hover:bg-accent-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-white">
       菜品盲盒
     </button>
-    {open && <MotionSheet open onClose={close} labelledBy="mystery-title"
-      panelClassName="w-full max-w-lg overflow-hidden border-2 border-ink-900 bg-paper shadow-elevation-3">
+    {open && <MotionSheet open onClose={close} labelledBy="mystery-title" centerOnMobile
+      panelClassName="w-full max-w-lg max-h-[calc(var(--sheet-viewport-height,100dvh)-2rem)] overflow-y-auto border-2 border-ink-900 bg-paper shadow-elevation-3">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink-900 bg-accent-50 px-4 py-3">
         <div>
           <h2 id="mystery-title" className="font-display text-[20px] font-bold leading-tight text-ink-900">菜品盲盒</h2>

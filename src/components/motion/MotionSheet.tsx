@@ -1,5 +1,6 @@
 'use client';
 
+// 可按需让手机弹窗居中，其余浮层沿用原有行为。
 /**
  * MotionSheet —— 统一浮层外壳（dialog / drawer 二合一）
  *
@@ -32,6 +33,7 @@ interface MotionSheetProps {
   label?: string;
   /** 是否允许移动端下拉关闭 */
   dismissible?: boolean;
+  centerOnMobile?: boolean;
   /** 面板附加 class（承载尺寸 / 圆角 / 布局） */
   panelClassName?: string;
   children: ReactNode;
@@ -60,6 +62,7 @@ export function MotionSheet({
   labelledBy,
   label,
   dismissible = true,
+  centerOnMobile = false,
   panelClassName = '',
   children,
 }: MotionSheetProps) {
@@ -158,7 +161,7 @@ export function MotionSheet({
     }
   }, []);
 
-  const dragEnabled = dismissible && variant === 'dialog' && isMobile && !reduce;
+  const dragEnabled = dismissible && variant === 'dialog' && isMobile && !centerOnMobile && !reduce;
 
   const handleDragEnd = useCallback(
     (_e: unknown, info: PanInfo) => {
@@ -167,14 +170,16 @@ export function MotionSheet({
     [onClose],
   );
 
-  const panelVariants: Variants = variant === 'drawer' ? v.slideInRight : isMobile ? v.slideUp : v.dialogPop;
+  const panelVariants: Variants = variant === 'drawer' ? v.slideInRight : isMobile && !centerOnMobile ? v.slideUp : v.dialogPop;
 
   if (!mounted) return null;
 
   const overlayClass =
     variant === 'drawer'
       ? 'fixed inset-0 z-50 flex justify-end bg-ink-900/40 backdrop-blur-sm'
-      : 'fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 backdrop-blur-sm sm:items-center sm:p-4';
+      : centerOnMobile
+        ? 'fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4 backdrop-blur-sm'
+        : 'fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 backdrop-blur-sm sm:items-center sm:p-4';
   const viewportStyle = viewport ? {
     top: viewport.top,
     bottom: 'auto',
@@ -219,7 +224,7 @@ export function MotionSheet({
               dragTransition={{ bounceStiffness: spring.snappy.stiffness, bounceDamping: spring.snappy.damping }}
               onDragEnd={dragEnabled ? handleDragEnd : undefined}
             >
-              {variant === 'dialog' && isMobile && dismissible && (
+              {variant === 'dialog' && isMobile && dismissible && !centerOnMobile && (
                 <div
                   aria-hidden="true"
                   className="flex shrink-0 touch-none justify-center pb-1 pt-2.5"
